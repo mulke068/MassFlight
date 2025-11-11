@@ -8,3 +8,24 @@ The Idea of our project is to developpe a tool that calculate and make a simulat
 # Dependencies
 Python 3.9.13
 pyglet 1.5.27
+
+https://www.windy.com
+https://www.ursinaengine.org
+
+
+
+# setup guide
+install-pyenv-win.ps1 -> open in PowerShell
+
+pyenv install 3.9.13
+pyenv local 3.9.13
+
+python -m pip install --user virtualenv
+
+virtualenv myenv
+
+.\myenv\Scripts\activate
+
+pip install -r requirements.txt
+
+python .\main.py
