@@ -170,11 +170,14 @@ class App(ctk.CTk):
     darkmodeButtonColor = "#313131"
     darkmodeTextColor = "#FFFFFF"
 
+    windowWidth = 800
+    windowHeight = 600
+
     def __init__(self):
         super().__init__()
         self.title('MassFlight - 3D Sphere')
         self.geometry('900x700')
-        self.minsize(800, 600)
+        self.minsize(self.windowWidth, self.windowHeight)
         self._set_appearance_mode('System')
 
         # layout
@@ -230,7 +233,7 @@ class App(ctk.CTk):
         self.display_area.grid_columnconfigure(0, weight=1)
 
         # Create renderer (deferred heavy resources are created inside renderer)
-        self.renderer = OffscreenPygletRenderer(width=800, height=600, resolution=50)
+        self.renderer = OffscreenPygletRenderer(width=self.windowWidth, height=self.windowHeight, resolution=50)
 
         # Create label to show frames inside display area
         self.img_label = ctk.CTkLabel(self.display_area, text='')
@@ -240,8 +243,8 @@ class App(ctk.CTk):
         self.img_label.bind('<ButtonPress-1>', self._on_press)
         self.img_label.bind('<B1-Motion>', self._on_drag)
         # Right-button for panning
-        self.img_label.bind('<ButtonPress-3>', self._on_press_pan)
-        self.img_label.bind('<B3-Motion>', self._on_pan)
+        self.img_label.bind('<ButtonPress-2>', self._on_press_pan)
+        self.img_label.bind('<B2-Motion>', self._on_pan)
         # Mouse wheel for zoom
         self.img_label.bind('<MouseWheel>', self._on_wheel)
 
@@ -296,7 +299,7 @@ class App(ctk.CTk):
     def _on_wheel(self, event):
         # event.delta positive for up
         if self.renderer:
-            self.renderer.zoom(event.delta)
+            self.renderer.zoom(event.delta/150)
 
     def _update_frame(self):
         if self.renderer is None:
