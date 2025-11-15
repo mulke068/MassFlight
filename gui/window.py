@@ -7,6 +7,15 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import logging
 from PIL import Image, ImageTk
+import os
+import sys
+# Ensure project root is on sys.path so sibling packages (like `config`) can be imported
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+import config.configurations as cfg
+
+conf = cfg.configurations
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -165,22 +174,17 @@ class OffscreenPygletRenderer:
 
 
 class App(ctk.CTk):
-    lightomodeButtonColor = "#CECECE"
-    lightmodeTextColor = "#000000"
-    darkmodeButtonColor = "#313131"
-    darkmodeTextColor = "#FFFFFF"
-
-    windowWidth = 800
-    windowHeight = 600
-
     def __init__(self):
         super().__init__()
         self.title('MassFlight - 3D Sphere')
         self.geometry('900x700')
-        self.minsize(self.windowWidth, self.windowHeight)
+        self.minsize(conf.MIN_WINDOW_WIDTH, conf.MIN_WINDOW_HEIGHT)
         self._set_appearance_mode('System')
-
-        # layout
+        try:
+            icon_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'icon', 'icon.ico'))
+            self.iconbitmap(default=icon_path)
+        except Exception as e:
+            print(f"Icon load failed: {e}")
 
         # Configure grid: left sidebar + right display
         self.grid_rowconfigure(0, weight=1)
@@ -194,29 +198,29 @@ class App(ctk.CTk):
         # Buttons
         self.button0 = ctk.CTkButton(
             self.sidebar, 
-            fg_color=(self.lightomodeButtonColor, self.darkmodeButtonColor), 
-            text_color=(self.lightmodeTextColor, self.darkmodeTextColor), 
+            fg_color=(conf.LIGHTMODE_BUTTON_COLOR, conf.DARKMODE_BUTTON_COLOR), 
+            text_color=(conf.LIGHTMODE_TEXT_COLOR, conf.DARKMODE_TEXT_COLOR), 
             text="3D View", 
             command=self.show_3d_view
         )
         self.button1 = ctk.CTkButton(
             self.sidebar,
-            fg_color=(self.lightomodeButtonColor, self.darkmodeButtonColor), 
-            text_color=(self.lightmodeTextColor, self.darkmodeTextColor), 
+            fg_color=(conf.LIGHTMODE_BUTTON_COLOR, conf.DARKMODE_BUTTON_COLOR), 
+            text_color=(conf.LIGHTMODE_TEXT_COLOR, conf.DARKMODE_TEXT_COLOR),  
             text="Velocity", 
             command=self.plot_graph1
         )
         self.button2 = ctk.CTkButton(
             self.sidebar,
-            fg_color=(self.lightomodeButtonColor, self.darkmodeButtonColor), 
-            text_color=(self.lightmodeTextColor, self.darkmodeTextColor), 
+            fg_color=(conf.LIGHTMODE_BUTTON_COLOR, conf.DARKMODE_BUTTON_COLOR), 
+            text_color=(conf.LIGHTMODE_TEXT_COLOR, conf.DARKMODE_TEXT_COLOR), 
             text="Acceleration", 
             command=self.plot_graph2
         )
         self.button3 = ctk.CTkButton(
             self.sidebar,
-            fg_color=(self.lightomodeButtonColor, self.darkmodeButtonColor), 
-            text_color=(self.lightmodeTextColor, self.darkmodeTextColor), 
+            fg_color=(conf.LIGHTMODE_BUTTON_COLOR, conf.DARKMODE_BUTTON_COLOR), 
+            text_color=(conf.LIGHTMODE_TEXT_COLOR, conf.DARKMODE_TEXT_COLOR),  
             text="Altitude", 
             command=self.plot_graph3
         )
@@ -233,7 +237,7 @@ class App(ctk.CTk):
         self.display_area.grid_columnconfigure(0, weight=1)
 
         # Create renderer (deferred heavy resources are created inside renderer)
-        self.renderer = OffscreenPygletRenderer(width=self.windowWidth, height=self.windowHeight, resolution=50)
+        self.renderer = OffscreenPygletRenderer(width=conf.MIN_WINDOW_WIDTH, height=conf.MIN_WINDOW_HEIGHT, resolution=50)
 
         # Create label to show frames inside display area
         self.img_label = ctk.CTkLabel(self.display_area, text='')
@@ -381,4 +385,3 @@ def run():
     app = App()
     app.mainloop()
 
-    
