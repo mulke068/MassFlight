@@ -5,6 +5,15 @@ from math import cos, pi, sin
 import pyglet
 from pyglet import gl
 
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
+LOG = logging.getLogger(__name__)
+
 window = pyglet.window.Window(width=800, height=600, caption="3D Visual", visible=True)
 
 def map(x, in_min, in_max, out_min, out_max):
@@ -27,9 +36,9 @@ def sphere(radius, resolution_points):
         for j in range(0,resolution_points):
             lat = map(j, 0 , resolution_points, -pi/2, pi/2)
 
-            x = radius * sin(lat) * cos(lon)
-            y = radius * sin(lat) * sin(lon)
-            z = radius * cos(lat)
+            x = radius * sin(lon) * cos(lat)
+            y = radius * sin(lon) * sin(lat)
+            z = radius * cos(lon)
 
             # Use extend because the draw function needs a flat list
             verticals.extend((x,y,z))
@@ -49,6 +58,7 @@ vertex_list = batch.add(
     ('c3B', (255,255,255) * num_points)
 )
 
+
 def setup_3d():
     gl.glEnable(gl.GL_DEPTH_TEST)
     gl.glViewport(0,0, window.width, window.height)
@@ -64,12 +74,22 @@ def setup_3d():
     # model Matrix
     gl.glMatrixMode(gl.GL_MODELVIEW)
     gl.glLoadIdentity()
-    gl.glTranslatef(0.0,0.0,-7)
+    gl.glTranslatef(panning_x, panning_y, zoom_distance)
+    # gl.glTranslatef(0, 0, zoom_distance)
+    # gl.glRotatef(rotation,0,1,0)
+    gl.glRotatef(rotation_x, 0,1,0)
+    gl.glRotatef(rotation_y, 1,0,0)
+    # gl.glRotatef(rotation_z, 0,0,1)
     
-    # visibiliti of points
-    gl.glPointSize(3)
+    # visibility of points
+    gl.glPointSize(2)
     gl.glEnable(gl.GL_POINT_SMOOTH)
 
+def update(dt):
+    global rotation
+    rotation += 20 * dt
+
+rotation = 0
 
 @window.event
 def on_draw():
@@ -83,6 +103,38 @@ def on_draw():
     # pyglet.graphics.draw(num_points, gl.GL_POINTS, ('v3f',points), ('c3B', (255,255,255) * num_points))
     batch.draw()
 
+zoom_distance = -6
+
+@window.event
+def on_mouse_scroll(x, y , scroll_x, scroll_y):
+    global zoom_distance
+    zoom_distance += scroll_y
+
+rotation_x = 0
+rotation_y = 0
+# rotation_z = 0
+panning_x = 0
+panning_y = 0
+
+@window.event
+def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
+    global rotation_x, rotation_y, panning_x, panning_y 
+    
+    if buttons == 1:
+        rotation_x += dx * 0.5
+        rotation_y += dy * 0.5
+    elif buttons == 2:
+        panning_x += dx * 0.1
+        panning_y += dy * 0.1
+
+    LOG.debug(
+            'on_mouse_drag(x=%s, y=%s, dx=%s, dy=%s, buttons=%s, modifiers=%s)',
+            x, y, dx, dy, buttons, modifiers
+        )
+    
+
+
 if __name__ == "__main__":
     print("Run ")
+    pyglet.clock.schedule_interval(update, 1/60.0)
     pyglet.app.run()
