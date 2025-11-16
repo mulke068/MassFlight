@@ -1,7 +1,6 @@
 # python version 3.9.13
 # pyglet version 1.5.27
 
-
 from copy import Error
 from math import asin, atan2, cos, pi, sin, sqrt
 import pyglet
