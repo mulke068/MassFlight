@@ -1,0 +1,140 @@
+# python version 3.9.13
+# pyglet version 1.5.27
+
+from csv import Error
+from math import cos, pi, sin
+import pyglet
+from pyglet import gl
+
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
+LOG = logging.getLogger(__name__)
+
+window = pyglet.window.Window(width=800, height=600, caption="3D Visual", visible=True)
+
+def map(x, in_min, in_max, out_min, out_max):
+    return (x - in_min) * (out_max- out_min) / (in_max - in_min) + out_min 
+
+# normal sphere coordinates
+# φ lon -180 - 0 - 180   = 360 points
+# θ lat  -90  - 0 - 90    = 180 points
+
+# x,y,z
+# x = r * sin(θ) * cos(φ)
+# y = r * sin(θ) * sin(φ)
+# z = r * cos(θ)
+# lat=theta=θ , lon=phi=φ
+
+def sphere(radius, resolution_points):
+    verticals = []
+    for i in range(resolution_points):
+        lon = map(i, 0 ,resolution_points, -pi, pi)
+        for j in range(resolution_points):
+            lat = map(j, 0 , resolution_points, -pi/2, pi/2)
+
+            # Horizontal
+            x = radius * sin(lon) * cos(lat)
+            y = radius * sin(lon) * sin(lat)
+            z = radius * cos(lon)
+
+            # Vertical
+            # x = radius * cos(lat) * cos(lon)
+            # y = radius * sin(lat)
+            # z = radius * cos(lat) * sin(lon)
+
+            # Use extend because the draw function needs a flat list
+            verticals.extend((x,y,z))
+            # verticals.append((x,y,z)) 
+
+    return verticals
+
+points = sphere(2,50)
+num_points = len(points) // 3
+
+batch = pyglet.graphics.Batch()
+
+vertex_list = batch.add(
+    num_points,
+    gl.GL_POINTS,
+    None,
+    ('v3f', points),
+    ('c3B', (255,255,255) * num_points)
+)
+
+
+def setup_3d():
+    gl.glEnable(gl.GL_DEPTH_TEST)
+    gl.glEnable(gl.GL_CULL_FACE)
+    
+    gl.glViewport(0,0, window.width, window.height)
+    
+    #projection matrix
+    gl.glMatrixMode(gl.GL_PROJECTION)
+    gl.glLoadIdentity()
+
+    # camera settings
+    aspect = window.width / window.height
+    gl.gluPerspective(60, aspect, 0.1, 100) # 60 fov, z 0.1-100
+        
+    # model view Matrix
+    gl.glMatrixMode(gl.GL_MODELVIEW)
+    gl.glLoadIdentity()
+    gl.glTranslatef(panning_x, panning_y, zoom_distance)
+    # gl.glTranslatef(0, 0, zoom_distance)
+    # gl.glRotatef(rotation,0,1,0)
+    gl.glRotatef(rotation_x, 0,1,0)
+    gl.glRotatef(rotation_y, 1,0,0)
+    # gl.glRotatef(rotation_z, 0,0,1)
+    
+    # visibility of points
+    # gl.glPointSize(2)
+    # gl.glEnable(gl.GL_POINT_SMOOTH)
+
+
+rotation = 0
+
+def update(dt):
+    global rotation
+    rotation += 20 * dt
+
+
+zoom_distance = -6
+
+@window.event
+def on_mouse_scroll(x, y , scroll_x, scroll_y):
+    global zoom_distance
+    zoom_distance += scroll_y
+
+rotation_x = 0
+rotation_y = 0
+# rotation_z = 0
+panning_x = 0
+panning_y = 0
+
+@window.event
+def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
+    global rotation_x, rotation_y, panning_x, panning_y 
+    
+    if buttons == 1:
+        rotation_x += dx * 0.5
+        rotation_y += dy * 0.5
+    elif buttons == 2:
+        panning_x += dx * 0.1
+        panning_y += dy * 0.1
+
+@window.event
+def on_draw():
+    window.clear()    
+    setup_3d()
+    gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+    batch.draw()
+
+if __name__ == "__main__":
+    print("Run ")
+    pyglet.clock.schedule_interval(update, 1/60.0)
+    pyglet.app.run()
