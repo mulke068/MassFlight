@@ -1,0 +1,12 @@
+
+class RenderConfig:
+    
+    SPHERE_RADIUS = 10
+    SPHERE_RESULUTION = 100
+    
+    DEFAULT_FOV = 60
+    NEAR_CLIP = 0.1
+    FAR_CLIP = 100.0
+
+    MIN_WINDOW_WIDTH = 800
+    MIN_WINDOW_HEIGHT = 600

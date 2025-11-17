@@ -1,4 +1,4 @@
-class configurations:
+class AppConfig:
     # Application configurations
     VERSION = "v0.7"
     APP_NAME = "MassFlight"
