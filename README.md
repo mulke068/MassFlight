@@ -32,7 +32,7 @@ python -m pip install --user virtualenv
 ```
 Create your separated environment
 ```
-virtualenv myenv
+virtualenv myenv || python -m virtualenv myenv
 ```
 Activate your isolated environment
 ```

@@ -13,15 +13,47 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-import config.app_config as cfg
+class Configuration():
+    VERSION = "v0.7"
+    APP_NAME = "MassFlight"
 
-conf = cfg.configurations
+    # Default color palettes
+    APPARENCE_MODE = "System"
+    LIGHTMODE_BUTTON_COLOR = "#CECECE"
+    LIGHTMODE_TEXT_COLOR = "#000000"
+    DARKMODE_BUTTON_COLOR = "#313131"
+    DARKMODE_TEXT_COLOR = "#FFFFFF"
+
+    # Window configurations
+    WINDOW_WIDTH = 1000
+    WINDOW_HEIGHT = 900
+    MIN_WINDOW_WIDTH = 600
+    MIN_WINDOW_HEIGHT = 500
+
+    # Button configurations
+    BUTTON_PADDING_X = 10
+    BUTTON_PADDING_Y = 10
+
+    # Graph configurations
+    GRAPH_DPI = 100
+    GRAPH_FIGURE_SIZE = (6, 5)
+
+
+    # 3D Visualization configurations
+    # Control sensitivity
+    ZOOM_RESOLUTION = 0.5
+    ROTATION_SENSITIVITY = 0.5
+    PANNING_SENSITIVITY = 0.01
+    FOCAL_LENGTH = 60  # Field of view for 3D perspective
+
+conf = Configuration()
 
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 LOG = logging.getLogger(__name__)
+
 
 
 class OffscreenPygletRenderer:
@@ -385,3 +417,5 @@ def run():
     app = App()
     app.mainloop()
 
+if __name__ == '__main__':
+    run()
