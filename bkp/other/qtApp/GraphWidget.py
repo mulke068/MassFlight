@@ -1,14 +1,10 @@
+"All grpahs that will be displayed"
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout)
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-
-# OpenGL imports
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import logging
-
-LOG = logging.getLogger(__name__)
-
 
 class GraphWidget(QWidget):
     def __init__(self, title):

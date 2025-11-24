@@ -1,15 +1,14 @@
+
+
+
 from PyQt5.QtWidgets import QOpenGLWidget
 from PyQt5.QtCore import Qt
-# OpenGL imports
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from PIL import Image
-import numpy as np
+import os
 from math import cos, pi, sin
-import logging
-
-LOG = logging.getLogger(__name__)
-
+import numpy as np
 
 class SphereWidget(QOpenGLWidget):
     """OpenGL widget for rendering the 3D sphere"""
@@ -40,7 +39,6 @@ class SphereWidget(QOpenGLWidget):
         self.bg_texture = None
         
     def initializeGL(self):
-        """Initialize OpenGL settings"""
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
         glClearColor(0.0, 0.0, 0.0, 1.0)
@@ -52,10 +50,10 @@ class SphereWidget(QOpenGLWidget):
         self.create_sphere_display_list()
         
     def load_textures(self):
-        """Load Earth and background textures"""
         try:
-            # Load Earth texture
-            img = Image.open('earth.jpg')
+            # Load Earth texture (path relative to this file)
+            earth_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'earth.jpg'))
+            img = Image.open(earth_path)
             img_data = np.array(img.convert('RGB'), dtype=np.uint8)
             
             self.earth_texture = glGenTextures(1)
@@ -64,14 +62,15 @@ class SphereWidget(QOpenGLWidget):
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img.width, img.height,
                         0, GL_RGB, GL_UNSIGNED_BYTE, img_data)
-            LOG.info("Earth texture loaded successfully")
+            print("Earth texture loaded successfully")
         except Exception as e:
-            LOG.error(f"Error loading earth.jpg: {e}")
+            print(f"Error loading earth.jpg from {earth_path}: {e}")
             self.earth_texture = None
             
         try:
-            # Load background texture
-            bg_img = Image.open('stars.jpg')
+            # Load background texture (path relative to this file)
+            stars_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'stars.jpg'))
+            bg_img = Image.open(stars_path)
             bg_data = np.array(bg_img.convert('RGB'), dtype=np.uint8)
             
             self.bg_texture = glGenTextures(1)
@@ -80,9 +79,9 @@ class SphereWidget(QOpenGLWidget):
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, bg_img.width, bg_img.height,
                         0, GL_RGB, GL_UNSIGNED_BYTE, bg_data)
-            LOG.info("Background texture loaded successfully")
+            print("Background texture loaded successfully")
         except Exception as e:
-            LOG.error(f"Error loading stars.jpg: {e}")
+            print(f"Error loading stars.jpg from {stars_path}: {e}")
             self.bg_texture = None
     
     def create_sphere_display_list(self):

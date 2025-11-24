@@ -1,19 +1,12 @@
-import sys
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QStackedWidget, QLabel,
-                             QFrame)
+
+
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QLabel, QFrame
 from PyQt5.QtCore import Qt
+from OpenGL.GL import *
+from OpenGL.GLU import *
 import GraphWidget
 import SphereWidget
 import SidebarButtons
-# OpenGL imports
-from OpenGL.GL import *
-from OpenGL.GLU import *
-import logging
-
-LOG = logging.getLogger(__name__)
-
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -150,7 +143,6 @@ class MainWindow(QMainWindow):
                 font-size: 14px;
                 font-weight: bold;
                 border-radius: 8px;
-                border-left: 4px solid #4ecdc4;
             }}
             QPushButton:hover {{
                 background-color: {active_btn.active_color};

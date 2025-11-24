@@ -1,11 +1,8 @@
-import sys
+
+
 from PyQt5.QtWidgets import QPushButton
-# OpenGL imports
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import logging
-
-LOG = logging.getLogger(__name__)
 
 class SidebarButton(QPushButton):
     def __init__(self, text, parent=None):
