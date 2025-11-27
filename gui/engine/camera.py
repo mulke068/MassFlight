@@ -45,3 +45,12 @@ class Camera:
         self.rotation_y = INITIAL_ROT_Y
         self.tilting_x = INITIAL_TILT_X
         self.tilting_y = INITIAL_TILT_Y
+
+    def get_params(self):
+        return {
+            'zoom': self.zoom_distance,
+            'rotation_x': self.rotation_x,
+            'rotation_y': self.rotation_y,
+            'tilting_x': self.tilting_x,
+            'tilting_y': self.tilting_y
+        }

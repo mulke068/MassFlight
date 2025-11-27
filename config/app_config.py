@@ -20,10 +20,10 @@ GRAPH_FIGURE_SIZE = (6, 5)
 
 # 3D Visualization configurations
 # Control sensitivity
-ZOOM_RESOLUTION = 0.5
-ROTATION_SENSITIVITY = 0.5
-PANNING_SENSITIVITY = 0.01
-FOCAL_LENGTH = 60  # Field of view for 3D perspective
+# ZOOM_RESOLUTION = 0.5
+# ROTATION_SENSITIVITY = 0.5
+# PANNING_SENSITIVITY = 0.01
+# FOCAL_LENGTH = 60  # Field of view for 3D perspective
 
 THEME = {
     'background': '#1a1a1a',
