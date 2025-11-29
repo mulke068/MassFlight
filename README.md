@@ -12,7 +12,7 @@ pyglet 1.5.27
 https://www.windy.com
 https://www.ursinaengine.org
 
-
+Live Data Source: NOAA/NWS tg-ftp
 
 # setup guide
 
