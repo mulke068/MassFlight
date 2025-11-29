@@ -14,7 +14,7 @@ class Sphere:
         self.radius = SPHERE_RADIUS
         self.resolution = SPHERE_RESULUTION
         self.display_list = None
-        self._create_mesh()
+        #self._create_mesh()                gibt opengl err: 1282
     
     def _create_mesh(self):
 

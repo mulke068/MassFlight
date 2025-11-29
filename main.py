@@ -1,7 +1,7 @@
+from PyQt5.QtWidgets import QApplication
+from gui.window import MainWindow
 import logging
-
-from gui.interface.app import MyApp
-
+import sys
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -9,7 +9,10 @@ logging.basicConfig(
 
 if __name__ == "__main__":
     LOG = logging.getLogger("main")
-    print("Hello, World!")
+    app = QApplication(sys.argv)
 
-    myApp = MyApp()
-    myApp.mainloop()
+    from gui.window import MainWindow
+    win = MainWindow()
+    win.show()
+
+    sys.exit(app.exec_()) 

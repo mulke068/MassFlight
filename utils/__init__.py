@@ -1,5 +1,5 @@
-from .utils import map 
+from .utils import map_value 
 
 __all__ = [
-    'map'
+    'map_value'
 ]

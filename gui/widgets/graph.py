@@ -16,9 +16,8 @@ class GraphWidget(QWidget):
         self.background_color = '#1e1e1e'
         
         self.draw()
-        self.UI()
 
-    def UI(self): 
+    def initUI(self): 
         ax = self.figure.add_subplot(111)
         
         if "Altitude" in self.graph_type:
@@ -51,17 +50,6 @@ class GraphWidget(QWidget):
         self.figure = Figure(facecolor='#1e1e1e')
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setStyleSheet(f"background-color: ;")
-        self.create_plot()
+        self.initUI()
         layout.addWidget(self.canvas)
         self.setLayout(layout)
-
-
-
-if __name__ == "__main__":
-    import sys
-    from PyQt5.QtWidgets import QApplication
-
-    app = QApplication(sys.argv)
-    demo = GraphWidget(graph_values=[(0,150),(1,220),(2,180),(3,300)], graph_type='Altitude over Time')
-    demo.show()
-    sys.exit(app.exec_())

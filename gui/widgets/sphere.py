@@ -1,5 +1,6 @@
 
 from OpenGL import GL
+from OpenGL.GLU import gluPerspective
 from PyQt5.QtWidgets import QOpenGLWidget
 
 from config.render_config import DEFAULT_FOV, FAR_CLIP, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, NEAR_CLIP
@@ -48,7 +49,7 @@ class SphereWidget(QOpenGLWidget):
         GL.glMatrixMode(GL.GL_PROJECTION)
         GL.glLoadIdentity()
         aspect_ration = self.width() / self.height()
-        GL.gluPerspective(DEFAULT_FOV, aspect_ration, NEAR_CLIP, FAR_CLIP)
+        gluPerspective(DEFAULT_FOV, aspect_ration, NEAR_CLIP, FAR_CLIP)
         
         GL.glMatrixMode(GL.GL_MODELVIEW)
         GL.glLoadIdentity()

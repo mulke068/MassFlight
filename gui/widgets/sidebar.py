@@ -32,7 +32,7 @@ class SidebarButton(QPushButton):
                     font-size: 14px;
                     font-weight: bold;
                     border-radius: 8px;
-                    left-border: 5px solid {self.left_border_color};
+                    border-left: 5px solid {self.left_border_color};
                 }}
                 QPushButton:hover {{
                     background-color: {self.hover_color};
@@ -51,7 +51,7 @@ class SidebarButton(QPushButton):
                     text-align: left;
                     font-size: 14px;
                     border-radius: 8px;
-                    left-border: 5px solid transparent;
+                    border-left: 5px solid transparent;
                 }}
                 QPushButton:hover {{
                     background-color: {self.hover_color};
