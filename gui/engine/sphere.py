@@ -52,8 +52,6 @@ class Sphere:
         GL.glEndList()
         
         LOG.info(f"Sphere mesh created with {len(indices)//3} triangles.")
-        
-
 
     # normal sphere coordinates
     # φ lon -180 - 0 - 180   = 360 points
@@ -63,7 +61,7 @@ class Sphere:
     # x = r * sin(θ) * cos(φ)
     # y = r * sin(θ) * sin(φ)
     # z = r * cos(θ)
-    def _sphere_mesh(radius, resolution) -> Tuple[List[float], List[float], List[int]]:
+    def _sphere_mesh(self, radius, resolution) -> Tuple[List[float], List[float], List[int]]:
     # def _sphere_mesh(radius, resolution):
         """
         Create a UV sphere mesh with proper lat/lon mapping
@@ -75,12 +73,12 @@ class Sphere:
         indices = []
         for i in range(resolution +1):
             lon = map_value(i, 0 ,resolution, -pi, pi)
-            u = -(i / resolution)
-            # u = i / resolution
+            # U should increase left->right (positive), avoid negative sign which mirrors the texture
+            u = (-i / resolution)
         
             for j in range(resolution +1):
                 lat = map_value(j, 0 , resolution, -pi/2, pi/2)
-                v = j / resolution
+                v = 1.0 - (j / resolution)
 
                 # x = radius * sin(lon) * cos(lat)
                 # y = radius * sin(lon) * sin(lat)

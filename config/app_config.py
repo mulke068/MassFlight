@@ -27,13 +27,13 @@ GRAPH_FIGURE_SIZE = (6, 5)
 
 THEME = {
     'background': '#1a1a1a',
-    'background_accent': "#1f1f1f",
-    'sidebar': "#383838",
-    'content': "#494949",
+    'background_accent': "#242424",
+    'sidebar': "#252525",
+    'content': "#1e1e1e",
     'button_normal': '#2d3848',
     'button_hover': '#3f4e63',
     'button_active': '#56687e',
-    'left_border_color': '#4ecdc4',
+    'left_border_color': "#005377",
     'text': '#ffffff',
     'text_secondary': '#666666',
 }

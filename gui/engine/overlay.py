@@ -4,7 +4,6 @@ import logging
 
 LOG = logging.getLogger(__name__)
 
-
 class Overlay:
     def __init__(self):
         self.pins = []

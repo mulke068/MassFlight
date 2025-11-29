@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QFont
 from gui.window import MainWindow
 import logging
 import sys
@@ -10,8 +11,7 @@ logging.basicConfig(
 if __name__ == "__main__":
     LOG = logging.getLogger("main")
     app = QApplication(sys.argv)
-
-    from gui.window import MainWindow
+    app.setFont(QFont("Casual", 10))
     win = MainWindow()
     win.show()
 

@@ -69,10 +69,26 @@ class TextureManager:
             image = Image.open(image_path)
             # convert to rgb and byte array
             image_data = np.array(image.convert("RGB"), dtype=np.uint8)
+            # ensure contiguous bytes layout and set upload alignment
+            image_data = np.ascontiguousarray(image_data)
             
             # Generate OpenGL texture
+            # generate and bind texture id
             texture_id = GL.glGenTextures(1)
+            # glGenTextures sometimes returns a numpy scalar/array; coerce to int
+            try:
+                texture_id = int(texture_id)
+            except Exception:
+                # if it's a sequence, grab first
+                try:
+                    texture_id = int(texture_id[0])
+                except Exception:
+                    pass
+
             GL.glBindTexture(GL.GL_TEXTURE_2D, texture_id)
+
+            # ensure proper unpack alignment for byte arrays
+            GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
             
             # Set texture parameters
             #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
@@ -80,8 +96,14 @@ class TextureManager:
             #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
             #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
             
+            # Set sane texture parameters so NPOT textures and sampling behave
+            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
+            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
+            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
+
             # upload texture data to GPU
-            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, image.width, image.height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image_data)
+            GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, image.width, image.height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image_data.tobytes())
             
             return texture_id
             
