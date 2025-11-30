@@ -1,3 +1,12 @@
+import sys
+import os
+
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path so Python can find 'config'
+sys.path.append(parent_dir)
+
 
 import json
 from math import cos, pi, asin, sqrt
@@ -6,9 +15,10 @@ import requests
 from regex import regex
 import logging
 
+from config.others_config import CACHE_FILE, MAX_FETCH_ATTEMPTS
+
 LOG = logging.getLogger(__name__)
 
-CACHE_FILE = "stations.json"
 
 class WeatherManager:
     def __init__(self):
@@ -17,6 +27,11 @@ class WeatherManager:
         self.station_distance = None
         self.station_data = None
         self.weather = {}
+
+        # _find_station
+        self.last_target_lat = None
+        self.last_target_lon = None
+        self.station_with_distance = []
 
         self._load_stations()
     
@@ -39,27 +54,33 @@ class WeatherManager:
                 -pressure: {value, unit}
         """
         
-        self.station_code , self.station_distance = self._find_station(lat, lon)
+        req_station_data = None
         # ELLX;06;590;Luxembourg / Luxembourg;;Luxembourg;6;49-37N;006-13E;49-37N;006-13E;376;379;P
 
         # self.station_code = "ELLX"
         # self.station_distance = 0
-
-        LOG.info(f"station code {self.station_code} distance {self.station_distance}")
         
+        try:
+            for fetch_try in range(MAX_FETCH_ATTEMPTS):
+                LOG.info("Requesting station data ... ")
+                self.station_code , self.station_distance = self._find_station(lat, lon, fetch_try)
+                LOG.info(f"Station code {self.station_code} distance {self.station_distance}")
+                req = requests.get(f'https://tgftp.nws.noaa.gov/data/observations/metar/stations/{self.station_code}.TXT', timeout=10)
+                LOG.info(req.status_code)
+                if req.status_code == 200:
+                    req_station_data = req
+                    break
+
+            # station_data = "2025/11/28 09:50 ELLX 280950Z 14019G25MPS 0100 R24/0325N FG VV001 04/04 Q1018 NOSIG"
+            # self.station_data = "2012/11/15 22:00 CWDL 152200Z VRB02KT 10SM BKN070 OVC080 M05/M05 A2969 RMK AC6AS2 -4.5/-7.0/0/0/0 70031 FINAL SKEDD OBS REP STN CLSNG SLP088"
+            station_data = req_station_data.text
+
+        except Exception as e:
+            LOG.error(e)
+            return None
+
         # after station ist found
         if len(self.station_code) > 0:
-            
-            try:
-                LOG.info("Requesting station data ... ")
-                req_station_data = requests.get(f'https://tgftp.nws.noaa.gov/data/observations/metar/stations/{self.station_code}.TXT', timeout=10)
-                LOG.info(req_station_data.status_code)
-                # station_data = "2025/11/28 09:50 ELLX 280950Z 14019G25MPS 0100 R24/0325N FG VV001 04/04 Q1018 NOSIG"
-                # self.station_data = "2012/11/15 22:00 CWDL 152200Z VRB02KT 10SM BKN070 OVC080 M05/M05 A2969 RMK AC6AS2 -4.5/-7.0/0/0/0 70031 FINAL SKEDD OBS REP STN CLSNG SLP088"
-                station_data = req_station_data.text
-            except Exception as e:
-                LOG.error(e)
-                return None
 
             try:
                 # Timestamp
@@ -147,26 +168,6 @@ class WeatherManager:
             }
 
             return self.weather
-
-    def _convert_DM_to_DD(self, dm: str) -> float:
-        """This Function converts DM(degrees minutes) to DD(decimal degrees)
-
-        Decimal Degrees = degrees + (minutes/60) + (seconds/3600)
-
-        """
-        reg = regex.match(r"(\d+)-(\d+)([NSWE])", dm)
-
-        if not reg:
-            return None
-
-        degrees = int(reg.group(1))
-        minutes = int(reg.group(2))
-        direction = reg.group(3)
-
-        if direction == "S" or direction == "W": 
-            return (degrees + (minutes/60)) * -1
-        else:
-            return degrees + (minutes/60)
         
             
     def _load_stations(self):
@@ -188,6 +189,7 @@ class WeatherManager:
 
         stations_req.raise_for_status()
 
+        parsed_stations = []
         for station in stations_req.text.split("\n"):
             parts = station.split(";")
 
@@ -206,14 +208,14 @@ class WeatherManager:
             if lat_station is None or lon_station is None:
                 continue
 
-            self.stations.append([
+            parsed_stations.append([
                     lat_station,
                     lon_station,
                     station_code,
                     station_name,
                     station_country
                 ])
-        
+        self.stations = parsed_stations
     
     def _save_stations(self):
         LOG.info("Saving stations to cache ... ")
@@ -221,21 +223,52 @@ class WeatherManager:
             json.dump(self.stations, file, indent=4)
     
     
-    def _find_station(self, target_lat, target_lon):
-        nearest_station = 999999
+    # i want to add that i can say that it should use the 2second nearest
+    def _find_station(self, target_lat, target_lon, n=0):
+        # nearest_station = 999999
         station_code = None
+        station_with_distance = []
+
+        if self.last_target_lat != target_lat or self.last_target_lon != target_lon:
+            self.last_target_lat = target_lat
+            self.last_target_lon = target_lon
+
+            for station in self.stations:
+                distance = self._haversine_distance(target_lat, target_lon, station[0], station[1])
+                # if distance < nearest_station:
+                #     nearest_station = distance
+                #     station_code = station[2]
+                station_with_distance.append([distance, station[2]])
         
-        for station in self.stations:
-            
-            distance = self._haversine_distance(target_lat, target_lon, station[0], station[1])
+            self.station_with_distance = station_with_distance.sort(key=lambda x: x[0])
+            # station_with_distance.sort()
+        else:
+            station_with_distance = self.station_with_distance
 
-            if distance < nearest_station:
-                nearest_station = distance
-                station_code = station[2]
+        station_code = station_with_distance[n][1]
+        station_distance = station_with_distance[n][0]
         
-        return station_code, nearest_station
+        return station_code, station_distance 
 
+    def _convert_DM_to_DD(self, dm: str) -> float:
+        """This Function converts DM(degrees minutes) to DD(decimal degrees)
 
+        Decimal Degrees = degrees + (minutes/60) + (seconds/3600)
+
+        """
+        reg = regex.match(r"(\d+)-(\d+)([NSWE])", dm)
+
+        if not reg:
+            return None
+
+        degrees = int(reg.group(1))
+        minutes = int(reg.group(2))
+        direction = reg.group(3)
+
+        if direction == "S" or direction == "W": 
+            return (degrees + (minutes/60)) * -1
+        else:
+            return degrees + (minutes/60)
 
     def _haversine_distance(self, lat1, lon1, lat2, lon2) -> float:
         # https://en.wikipedia.org/wiki/Radian
@@ -260,16 +293,21 @@ class WeatherManager:
 
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     
-#     LOG.setLevel(logging.INFO)
-#     LOG.addHandler(logging.StreamHandler())
+    LOG.setLevel(logging.INFO)
+    LOG.addHandler(logging.StreamHandler())
     
-    # wm = WeatherManager()
+    wm = WeatherManager()
 
     # wm._load_stations()
     # print(wm.stations)
     # data = wm._find_station(49.8157635,6.1315139999999815)
+    # print(data)
+    # data = wm._find_station(49.8157635,6.1315139999999815,1)
+    # print(data)
+    # data = wm._find_station(49.8157635,6.1315139999999815,2)
+    # print(data)
     
     # data = wm.get(49.8157635,6.1315139999999815) # Luxembourg
     # print(data) # // Station Code ELLX
@@ -277,8 +315,8 @@ class WeatherManager:
     # data = wm.get(48.846659, 2.349194) # Paris | Frankreich 
     # print(data)
     # delay(1000)
-    # data = wm.get(35.675978, 139.721296) # Tokio | Japan
-    # print(data)
+    data = wm.get(35.675978, 139.721296) # Tokio | Japan
+    print(data)
     # delay(1000)
     # data = wm.get(-34.776794, -58.385598) # Buenos Aires | Argentinien
     # print(data)
