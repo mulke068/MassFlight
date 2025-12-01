@@ -73,12 +73,11 @@ class Sphere:
         indices = []
         for i in range(resolution +1):
             lon = map_value(i, 0 ,resolution, -pi, pi)
-            # U should increase left->right (positive), avoid negative sign which mirrors the texture
-            u = (-i / resolution)
+            u = 1 - (i / resolution)
         
             for j in range(resolution +1):
                 lat = map_value(j, 0 , resolution, -pi/2, pi/2)
-                v = 1.0 - (j / resolution)
+                v = j / resolution
 
                 # x = radius * sin(lon) * cos(lat)
                 # y = radius * sin(lon) * sin(lat)

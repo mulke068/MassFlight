@@ -12,14 +12,16 @@ def xyz_to_lonlat(x, y, z):
     lat = asin(lat_ratio) * 180 / pi
     # Use standard atan2(z, x) to produce longitude; avoid negating it
     # which caused a horizontal mirror when converting back to xyz.
-    lon = atan2(z, x) * 180 / pi
+    # [180,-180] to [-180,180]
+    # atan2 ned for correct cal [-180, 180]
+    lon = -(atan2(z, x) * 180 / pi)
     
     return lon, lat
 
 
 def lonlat_to_xyz(lon, lat, radius):
     """Convert longitude/latitude to 3D Cartesian coordinates"""
-    lon_rad = lon * pi / 180
+    lon_rad = -(lon * pi / 180)
     lat_rad = lat * pi / 180
     
     x = radius * cos(lat_rad) * cos(lon_rad)

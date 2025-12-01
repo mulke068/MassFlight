@@ -202,7 +202,7 @@ class SphereWidget(QOpenGLWidget):
             self._last_mouse_pos = None
             self._mouse_button = None
 
-        if event.button() == Qt.MiddleButton :#& self.point2 == 0:
+        if event.button() == Qt.MouseButton.RightButton:#& self.point2 == 0:
             self._add_pin_at_cursor(event.x(), event.y())
 
         return super().mousePressEvent(event)
@@ -213,29 +213,30 @@ class SphereWidget(QOpenGLWidget):
         return super().mouseReleaseEvent(event)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Space:
+        if event.key() == Qt.Key.Key_Space:
             # reset camera on spacebar
             self.camera.reset()
             self.update()  
-        elif event.key() == Qt.Key_C:
+        elif event.key() == Qt.Key.Key_C:
             # clear pins on 'C' key
             self.pin1.clear()
             self.pin2.clear()
             self.update()
         # else if x is pressed clear only one pin starting with pin2
-        elif event.key() == Qt.Key_X:
+        elif event.key() == Qt.Key.Key_X:
             if self.pin2:
                 self.pin2.clear()
             elif self.pin1:
                 self.pin1.clear()
             self.update()
-        elif event.key() == Qt.Key_T:
+        elif event.key() == Qt.Key.Key_T:
             # toggle trajectory on 'T' key
             if self.trajectory.is_animating():
                 self.trajectory.stop_animation()
             else:
                 self.trajectory.start_animation(SAMPLE_TRAJECTORY)
                 self.update()
+
 
 
     def mouseMoveEvent(self, event):
@@ -250,10 +251,10 @@ class SphereWidget(QOpenGLWidget):
         # import local so we don't add a top-level dependency in other contexts
         from PyQt5.QtCore import Qt
 
-        if self._mouse_button == Qt.LeftButton:
+        if self._mouse_button == Qt.MouseButton.LeftButton:
             # rotate camera on left-drag
             self.camera.rotate(dx, dy)
-        elif self._mouse_button == Qt.RightButton:
+        elif self._mouse_button == Qt.MouseButton.MiddleButton:
             # tilt/pan on right-drag
             self.camera.tilt(dx, dy)
 
@@ -382,7 +383,7 @@ class SphereWidget(QOpenGLWidget):
                 # Place pin1 first if empty
                 if not self.pin1:
                     self.pin1.append((lon, lat))
-                    LOG.info(f"1st Pin at Lat: {lat:.2f}°, Lon: {lon:.2f}°")
+                    LOG.info(f"1st Pin at Lat,Lon: {lat},{lon}")
                     self.update()
 
                 # Only allow pin2 after pin1 exists
@@ -391,7 +392,7 @@ class SphereWidget(QOpenGLWidget):
                     if not is_close(lon, lat, self.pin1[0], threshold):
                         self.pin2.append((lon, lat))
                         print(self.pin1)
-                        LOG.info(f"2nd Pin at Lat: {lat:.2f}°, Lon: {lon:.2f}°")
+                        LOG.info(f"2nd Pin at Lat, Lon: {lat},{lon}")
                         self.update()
                     else:
                         LOG.info("Rejected: Pin2 too close to Pin1")

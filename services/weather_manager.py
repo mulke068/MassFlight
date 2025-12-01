@@ -35,7 +35,7 @@ class WeatherManager:
 
         self._load_stations()
     
-    def get(self, lat, lon) -> dict: 
+    def get(self, lat, lon) -> tuple[dict, int]: 
         """
         
         
@@ -52,9 +52,12 @@ class WeatherManager:
                 -temperature: {value, dewpoint}
                 
                 -pressure: {value, unit}
+            int:
+                Number of closest station
         """
         
         req_station_data = None
+        fetch_trys = 0
         # ELLX;06;590;Luxembourg / Luxembourg;;Luxembourg;6;49-37N;006-13E;49-37N;006-13E;376;379;P
 
         # self.station_code = "ELLX"
@@ -70,6 +73,8 @@ class WeatherManager:
                 if req.status_code == 200:
                     req_station_data = req
                     break
+                fetch_trys += 1
+
 
             # station_data = "2025/11/28 09:50 ELLX 280950Z 14019G25MPS 0100 R24/0325N FG VV001 04/04 Q1018 NOSIG"
             # self.station_data = "2012/11/15 22:00 CWDL 152200Z VRB02KT 10SM BKN070 OVC080 M05/M05 A2969 RMK AC6AS2 -4.5/-7.0/0/0/0 70031 FINAL SKEDD OBS REP STN CLSNG SLP088"
@@ -77,7 +82,7 @@ class WeatherManager:
 
         except Exception as e:
             LOG.error(e)
-            return None
+            return None, fetch_trys
 
         # after station ist found
         if len(self.station_code) > 0:
@@ -167,7 +172,9 @@ class WeatherManager:
                 "time": time,
             }
 
-            return self.weather
+            return self.weather, fetch_trys
+        else:
+            return None, fetch_trys
         
             
     def _load_stations(self):

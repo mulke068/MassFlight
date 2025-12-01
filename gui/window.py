@@ -1,7 +1,7 @@
-
+from PyQt5 import QtGui
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget
-from config.app_config import APP_NAME, WINDOW_HEIGHT, WINDOW_WIDTH, THEME
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget, QMessageBox
+from config.app_config import APP_NAME, ICON_FILE, WINDOW_HEIGHT, WINDOW_WIDTH, THEME
 from .widgets import sphere as sphere
 from .widgets import graph as graph
 from .widgets import sidebar as sidebar
@@ -14,6 +14,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.setWindowTitle(APP_NAME)
         self.setGeometry(100,100, WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.setWindowIcon(QtGui.QIcon(ICON_FILE))
         self.pages = []
         self.setStyleSheet(f"QMainWindow {{ background-color: {THEME['background']}; }} QLabel {{ color: {THEME['text']}; }}")
 
@@ -31,12 +32,13 @@ class MainWindow(QMainWindow):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_widget.setLayout(main_layout)
+        
+        self.page_switch(0)
     
     def sidebar_area(self):
         sidebar_frame = QFrame()
         sidebar_frame.setFixedWidth(400)
-        sidebar_frame.setStyleSheet(f"""QFrame {{ background-color: {THEME['sidebar']};
-                                     border-right: 2px solid #333; }}""")
+        sidebar_frame.setStyleSheet(f"""QFrame {{ background-color: {THEME['sidebar']};border-right: 2px solid #333; }}""")
         
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(20, 40, 20, 40)
@@ -74,9 +76,9 @@ class MainWindow(QMainWindow):
         instructions = QLabel(
             "Controls:\n"
             "• Left drag: Rotate\n"
-            "• Right drag: Pan\n"
+            "• Middle drag: Pan\n"
             "• Scroll: Zoom\n"
-            "• Middle click: Add pin\n"
+            "• Right click: Add pin\n"
             "• Space: Reset view\n"
             "• T: Toggle trajectory\n"
             "• C: Clear all pins\n"
@@ -144,6 +146,17 @@ class MainWindow(QMainWindow):
                 pass
 
         LOG.info(f"Switched to page {index}")
+
+    def keyPressEvent(self, a0):
+        if a0.key() == Qt.Key.Key_Q:
+            self.close()
+        elif a0.key() == Qt.Key.Key_P:
+            popup = QMessageBox(self)
+            popup.setWindowTitle("Test")
+            popup.setText("This is a test popup.")
+            popup.exec_()
+        
+        return super().keyPressEvent(a0)
 
     def closeEvent(self, a0):
         LOG.info("Application closing")

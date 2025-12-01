@@ -25,35 +25,12 @@ class TextureManager:
             LOG.warning("No texture name provided.")
             return None
         return self._create_OpenGL_texture(self.texture_name)
-        #try:
-            #image = self._get_image_from_file(self.texture_name)
-            #texture = image.get_texture()
-            #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
-            #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
-            #LOG.info(f"Texture '{self.texture_name}' loaded successfully.")
-            #return texture
-        #except Exception as e:
-            #LOG.error(f"Error loading '{self.texture_name}' as texture: {e}")
-            #return None
     
     def load_bg_sprite(self):
         if not self.bg_sprite_name:
             LOG.warning("No background sprite name provided.")
             return None
         return self._create_OpenGL_texture(self.bg_sprite_name)
-        #try:
-            #sprite = self._get_image_from_file(self.bg_sprite_name)
-            #bg_sprite = pyglet.sprite.Sprite(sprite, x=0, y=0, batch=None)
-
-            ## gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_REPEAT)
-            ## gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-            ## image.build_mipmaps()
-
-            #LOG.info(f"Background sprite '{self.bg_sprite_name}' loaded successfully.")
-            #return bg_sprite 
-        #except Exception as e:
-            #LOG.error(f"Error loading '{self.bg_sprite_name}' as background sprite: {e}")
-            #return None
     
     def _create_OpenGL_texture(self, file_name) -> Any:
         try:
@@ -68,7 +45,8 @@ class TextureManager:
             
             image = Image.open(image_path)
             # convert to rgb and byte array
-            image = image.transpose(Image.FLIP_LEFT_RIGHT)
+            # image = image.transpose(Image.FLIP_TOP_BOTTOM)
+            image = image.transpose(Image.FLIP_TOP_BOTTOM)
             image_data = np.array(image.convert("RGB"), dtype=np.uint8)
             # ensure contiguous bytes layout and set upload alignment
             image_data = np.ascontiguousarray(image_data)
@@ -91,17 +69,11 @@ class TextureManager:
             # ensure proper unpack alignment for byte arrays
             GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 1)
             
-            # Set texture parameters
-            #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
-            #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
-            #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
-            #GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
-            
             # Set sane texture parameters so NPOT textures and sampling behave
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
-            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
-            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT)
+            # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
+            GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
 
             # upload texture data to GPU
             GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGB, image.width, image.height, 0, GL.GL_RGB, GL.GL_UNSIGNED_BYTE, image_data.tobytes())

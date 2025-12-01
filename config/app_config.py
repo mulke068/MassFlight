@@ -3,6 +3,9 @@
 VERSION = "v0.7"
 APP_NAME = "MassFlight"
 
+ICON_FILE = "assets/favicon/icon.ico"
+
+
 # Window configurations
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 900
