@@ -4,6 +4,7 @@ import logging
 
 from gui.engine import trajectory
 from gui.engine.trajectory import Trajectory
+from gui.engine.trajectory import SAMPLE_TRAJECTORY
 
 LOG = logging.getLogger(__name__)
 
@@ -28,16 +29,18 @@ class Overlay:
     def remove_last_pin(self):
         if self.pins:
             self.pins.pop()
-    
+
+    ###################### TRAJECTORY #############################
     def start_trajectory_animation(self):
-        """Start trajectory animation from first pin to last pin"""
-        if len(self.pins) >= 2:
-            point1 = self.pins[0]
-            point2 = self.pins[-1]
-            self.trajectory.generate_trajectory_between_points(point1, point2, num_steps=100)
+        if self.pins:
+            a = [(1,2,3)]
+            self.trajectory.add_point(a[0][0], a[0][1], a[0][2]) # Replace a with calculated points
+            self.trajectory.set_full_trajectory(self.trajectory.points.copy())
             self.trajectory.start_animation()
-            return True
-        return False
+        else:
+            self.trajectory.set_full_trajectory(SAMPLE_TRAJECTORY)
+            self.trajectory.start_animation()
+        return True
     
     
     def draw(self):

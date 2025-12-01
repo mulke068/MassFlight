@@ -263,16 +263,15 @@ class SphereWidget(QOpenGLWidget):
             self.overlay.remove_last_pin()
             self.update()
         elif event.key() == Qt.Key.Key_T:
-            # Start trajectory animation from first pin to last pin
+            # Toggle animation using existing points (pins or sample)
             if self.overlay.trajectory.is_animating:
                 self.overlay.trajectory.stop_animation()
                 self.animation_timer.stop()
+                LOG.info("Trajectory animation stopped")
             else:
-                if self.overlay.start_trajectory_animation():
-                    self.animation_timer.start(16)  # ~60 FPS
-                    LOG.info("Trajectory animation started")
-                else:
-                    LOG.info("Need at least 2 pins to create trajectory")
+                self.overlay.start_trajectory_animation()
+                self.animation_timer.start(16)  # ~60 FPS
+                LOG.info("Trajectory animation started ")
     
     def _update_trajectory_animation(self):
         """Update trajectory animation and redraw"""

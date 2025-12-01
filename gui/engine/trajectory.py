@@ -4,8 +4,6 @@ import math
 
 
 class Trajectory:
-    """Manages trajectory points and animation"""
-    
     def __init__(self):
         self.points: List[Tuple[float, float, float]] = []
         self.full_trajectory: List[Tuple[float, float, float]] = []
@@ -16,14 +14,6 @@ class Trajectory:
     def generate_trajectory_between_points(self, point1: Tuple[float, float, float], 
                                            point2: Tuple[float, float, float], 
                                            num_steps: int = 100):
-        """
-        Generate trajectory from point1 to point2 using spherical linear interpolation.
-        
-        Args:
-            point1: Starting point (x, y, z)
-            point2: Ending point (x, y, z)
-            num_steps: Number of interpolation steps for smooth animation
-        """
         trajectory = []
         
         # Get radii of both points
@@ -70,9 +60,15 @@ class Trajectory:
         self.reset()
     
     def set_full_trajectory(self, points: List[Tuple[float, float, float]]):
-        """Set the complete trajectory data"""
         self.full_trajectory = points.copy()
         self.reset()
+
+    def add_point(self, x: float, y: float, z: float):
+        self.points.append((x, y, z))
+        self.full_trajectory.append((x, y, z))
+
+    def get_points(self) -> List[Tuple[float, float, float]]:
+        return self.points
     
     def reset(self):
         self.points = []
@@ -85,9 +81,8 @@ class Trajectory:
     def stop_animation(self):
         self.is_animating = False
     
-        def set_animation_speed(self, speed: int):
-            """Set how many points to add per update"""
-            self.animation_speed = max(1, speed)
+    def set_animation_speed(self, speed: int):
+        self.animation_speed = max(1, speed)
     
     def update(self) -> bool:
         if not self.is_animating:
@@ -109,14 +104,6 @@ class Trajectory:
         
         return True
     
-    def get_points(self) -> List[Tuple[float, float, float]]:
-        return self.points
-    
-    def add_point(self, x: float, y: float, z: float):
-        """Add a single point to the trajectory"""
-        self.points.append((x, y, z))
-        self.full_trajectory.append((x, y, z))
-    
     def clear(self):
         self.points = []
         self.full_trajectory = []
@@ -124,7 +111,6 @@ class Trajectory:
         self.is_animating = False
     
     def is_complete(self) -> bool:
-        """Check if animation is complete"""
         return self.current_index >= len(self.full_trajectory)
 
 
