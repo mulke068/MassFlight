@@ -29,6 +29,16 @@ class Overlay:
         if self.pins:
             self.pins.pop()
     
+    def start_trajectory_animation(self):
+        """Start trajectory animation from first pin to last pin"""
+        if len(self.pins) >= 2:
+            point1 = self.pins[0]
+            point2 = self.pins[-1]
+            self.trajectory.generate_trajectory_between_points(point1, point2, num_steps=100)
+            self.trajectory.start_animation()
+            return True
+        return False
+    
     
     def draw(self):
         # GL.glEnable(GL.GL_BLEND)

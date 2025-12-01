@@ -2,7 +2,7 @@
 from OpenGL import GL
 from OpenGL.GLU import gluPerspective, gluUnProject
 from PyQt5.QtWidgets import QOpenGLWidget
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from OpenGL.GLU import *
 
 
@@ -38,6 +38,10 @@ class SphereWidget(QOpenGLWidget):
         self._mouse_button = None
         # track mouse movement even without button presses (optional)
         self.setMouseTracking(True)
+        
+        # Animation timer for trajectory
+        self.animation_timer = QTimer()
+        self.animation_timer.timeout.connect(self._update_trajectory_animation)
 
     def initializeGL(self):
         GL.glEnable(GL.GL_DEPTH_TEST)
@@ -258,14 +262,25 @@ class SphereWidget(QOpenGLWidget):
         elif event.key() == Qt.Key.Key_X:
             self.overlay.remove_last_pin()
             self.update()
-        elif event.key() == Qt.Key.Key_T: # TODO: Update after Finished Overlay 
-            # toggle trajectory on 'T' key
-            
-            if self.trajectory.is_animating():
-                self.trajectory.stop_animation()
+        elif event.key() == Qt.Key.Key_T:
+            # Start trajectory animation from first pin to last pin
+            if self.overlay.trajectory.is_animating:
+                self.overlay.trajectory.stop_animation()
+                self.animation_timer.stop()
             else:
-                self.trajectory.start_animation(SAMPLE_TRAJECTORY)
-                self.update()
+                if self.overlay.start_trajectory_animation():
+                    self.animation_timer.start(16)  # ~60 FPS
+                    LOG.info("Trajectory animation started")
+                else:
+                    LOG.info("Need at least 2 pins to create trajectory")
+    
+    def _update_trajectory_animation(self):
+        """Update trajectory animation and redraw"""
+        if self.overlay.trajectory.update():
+            self.update()
+        else:
+            self.animation_timer.stop()
+            LOG.info("Trajectory animation complete")
 
     
     def _get_ray_from_cursor(self, x, y):
