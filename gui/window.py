@@ -79,7 +79,8 @@ class MainWindow(QMainWindow):
             "• Middle click: Add pin\n"
             "• Space: Reset view\n"
             "• T: Toggle trajectory\n"
-            "• C: Clear pins"
+            "• C: Clear all pins\n"
+            "• X: Clear latest pin"
         )
         instructions.setStyleSheet(f"""
             QLabel {{

@@ -68,6 +68,7 @@ class TextureManager:
             
             image = Image.open(image_path)
             # convert to rgb and byte array
+            image = image.transpose(Image.FLIP_LEFT_RIGHT)
             image_data = np.array(image.convert("RGB"), dtype=np.uint8)
             # ensure contiguous bytes layout and set upload alignment
             image_data = np.ascontiguousarray(image_data)
