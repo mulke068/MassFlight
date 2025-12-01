@@ -276,132 +276,91 @@ class SphereWidget(QOpenGLWidget):
 
         return super().wheelEvent(event)
     
+    def _get_ray_from_cursor(self, x, y):
+        """Calculates a ray origin and direction from the cursor position.
+
+        This involves reconstructing the projection and modelview matrices to un-project
+        the 2D screen coordinates back into the 3D world space.
+
+        Args:
+            x: The x-coordinate of the cursor.
+            y: The y-coordinate of the cursor.
+
+        Returns:
+            A tuple containing the ray origin (list) and ray direction (list).
+        """
+        dpr = self.devicePixelRatioF()
+        width_px = int(self.width() * dpr)
+        height_px = int(self.height() * dpr)
+
+        GL.glMatrixMode(GL.GL_PROJECTION)
+        GL.glPushMatrix()
+        GL.glLoadIdentity()
+        gluPerspective(DEFAULT_FOV, width_px / height_px, NEAR_CLIP, FAR_CLIP)
+        proj_matrix = GL.glGetDoublev(GL.GL_PROJECTION_MATRIX)
+        GL.glPopMatrix()
+
+        GL.glMatrixMode(GL.GL_MODELVIEW)
+        GL.glPushMatrix()
+        GL.glLoadIdentity()
+        cam_params = self.camera.get_params()
+        GL.glTranslatef(0, 0, cam_params['zoom'])
+        GL.glTranslatef(cam_params['tilting_x'], cam_params['tilting_y'], 0)
+        GL.glRotatef(cam_params['rotation_y'], 1, 0, 0)
+        GL.glRotatef(cam_params['rotation_x'], 0, 1, 0)
+        model_matrix = GL.glGetDoublev(GL.GL_MODELVIEW_MATRIX)
+        GL.glPopMatrix()
+
+        viewport = GL.glGetIntegerv(GL.GL_VIEWPORT)
+
+        x_fb = float(x) * dpr
+        y_fb = viewport[3] - (float(y) * dpr)
+
+        # Un-project the 2D point at the near and far clipping planes.
+        near_point = gluUnProject(x_fb, y_fb, 0.0, model_matrix, proj_matrix, viewport)
+        far_point = gluUnProject(x_fb, y_fb, 1.0, model_matrix, proj_matrix, viewport)
+
+        if near_point is None or far_point is None:
+            raise RuntimeError('gluUnProject failed to convert screen to world coordinates')
+
+        ray_origin = list(near_point)
+        ray_dir = [f - n for f, n in zip(far_point, near_point)]
+
+        # Normalize the direction vector.
+        from math import sqrt
+        length = sqrt(sum(c * c for c in ray_dir))
+        if length > 0:
+            ray_dir = [c / length for c in ray_dir]
+
+        return ray_origin, ray_dir
+
+    def _place_pin(self, lon, lat):
+        threshold = 0.25  # degrees
+
+        if not self.pin1:
+            self.pin1.append((lon, lat))
+            LOG.info(f"1st Pin at Lat,Lon: {lat:.2f},{lon:.2f}")
+            self.update()
+        elif not self.pin2:
+            is_close = abs(self.pin1[0][0] - lon) < threshold and abs(self.pin1[0][1] - lat) < threshold
+            if not is_close:
+                self.pin2.append((lon, lat))
+                LOG.info(f"2nd Pin at Lat, Lon: {lat:.2f},{lon:.2f}")
+                self.update()
+            else:
+                LOG.info("Rejected: Pin2 is too close to Pin1.")
+
     def _add_pin_at_cursor(self, x, y):
-        """Add pin at cursor"""
         try:
-            # ensure GL context is current and matrices reflect the scene
-            try:
-                self.makeCurrent()
-            except Exception:
-                # QOpenGLWidget.makeCurrent may not be available in some contexts
-                pass
-
-            # use device-pixel coordinates (account for High-DPI)
-            try:
-                dpr = float(self.devicePixelRatioF())
-            except Exception:
-                try:
-                    dpr = float(self.devicePixelRatio())
-                except Exception:
-                    dpr = 1.0
-
-            # compute projection matrix corresponding to paintGL
-            GL.glMatrixMode(GL.GL_PROJECTION)
-            GL.glPushMatrix()
-            GL.glLoadIdentity()
-            width_px = int(self.width() * dpr)
-            height_px = int(self.height() * dpr) if self.height() else 1
-            aspect = (width_px / height_px) if height_px else 1.0
-            gluPerspective(DEFAULT_FOV, aspect, NEAR_CLIP, FAR_CLIP)
-
-            proj_matrix = (GL.GLdouble * 16)()
-            GL.glGetDoublev(GL.GL_PROJECTION_MATRIX, proj_matrix)
-
-            # compute modelview matrix corresponding to paintGL
-            GL.glMatrixMode(GL.GL_MODELVIEW)
-            GL.glPushMatrix()
-            GL.glLoadIdentity()
-            cam_paras = self.camera.get_params()
-            GL.glTranslatef(0, 0, cam_paras['zoom'])
-            GL.glTranslatef(cam_paras['tilting_x'], cam_paras['tilting_y'], 0)
-            GL.glRotatef(cam_paras['rotation_y'], 1, 0, 0)
-            GL.glRotatef(cam_paras['rotation_x'], 0, 1, 0)
-
-            model_matrix = (GL.GLdouble * 16)()
-            GL.glGetDoublev(GL.GL_MODELVIEW_MATRIX, model_matrix)
-
-            viewport = (GL.GLint * 4)()
-            GL.glGetIntegerv(GL.GL_VIEWPORT, viewport)
-
-            # convert matrices/viewport to Python-compatible tuples
-            model = tuple(model_matrix)
-            proj = tuple(proj_matrix)
-            view = tuple(viewport)
-
-            # convert mouse coords into framebuffer pixels
-            x_fb = float(x) * dpr
-            y_fb = float(y) * dpr
-
-            # flip Y for OpenGL window coordinate origin (bottom-left)
-            y_flipped = view[3] - y_fb
-
-            near_point = gluUnProject(x_fb, y_flipped, 0.0, model, proj, view)
-            far_point = gluUnProject(x_fb, y_flipped, 1.0, model, proj, view)
-
-            # restore matrix stacks
-            GL.glPopMatrix()
-            GL.glMatrixMode(GL.GL_PROJECTION)
-            GL.glPopMatrix()
-            GL.glMatrixMode(GL.GL_MODELVIEW)
-
-            if near_point is None or far_point is None:
-                raise RuntimeError('gluUnProject failed to convert screen to world coordinates')
-
-            ray_origin = [float(near_point[i]) for i in range(3)]
-            ray_dir = [float(far_point[i]) - float(near_point[i]) for i in range(3)]
-
-            # normalize the ray direction (robust)
-            from math import sqrt
-            length = sqrt(sum(c * c for c in ray_dir))
-            if length != 0:
-                ray_dir = [c / length for c in ray_dir]
-
-            # intersect with sphere
+            self.makeCurrent()
+            ray_origin, ray_dir = self._get_ray_from_cursor(x, y)
             intersection = ray_sphere_intersection(ray_origin, ray_dir, [0, 0, 0], SPHERE_RADIUS)
 
             if intersection:
-                # convert intersection to lon/lat and store as sphere-relative coordinates
                 lon, lat = xyz_to_lonlat(*intersection)
-
-                """# avoid duplicates within a small threshold
-                duplicate = any(isinstance(p, (tuple, list)) and len(p) == 2 and abs(p[0]-lon) < 0.25 and abs(p[1]-lat) < 0.25 for p in self.pin1 + self.pin2)
-                if not duplicate and len(self.pin1) == 0:
-                    self.pin1.append((lon, lat))
-                    LOG.info(f"1st Pin at Lat: {lat:.2f}°, Lon: {lon:.2f}°")
-                    self.update()
-                if not duplicate and len(self.pin2) == 0 and len(self.pin1) != 0:
-                    self.pin2.append((lon, lat))
-                    LOG.info(f"2nd Pin at Lat: {lat:.2f}°, Lon: {lon:.2f}°")
-                    self.update()
-"""
-
-                threshold = 0.25  # degrees
-
-                def is_close(lon, lat, pin, threshold=0.25):
-                    return abs(pin[0] - lon) < threshold and abs(pin[1] - lat) < threshold
-
-                # Place pin1 first if empty
-                if not self.pin1:
-                    self.pin1.append((lon, lat))
-                    LOG.info(f"1st Pin at Lat,Lon: {lat},{lon}")
-                    self.update()
-
-                # Only allow pin2 after pin1 exists
-                elif not self.pin2:
-                    # Avoid pin2 being equal/too close to pin1
-                    if not is_close(lon, lat, self.pin1[0], threshold):
-                        self.pin2.append((lon, lat))
-                        print(self.pin1)
-                        LOG.info(f"2nd Pin at Lat, Lon: {lat},{lon}")
-                        self.update()
-                    else:
-                        LOG.info("Rejected: Pin2 too close to Pin1")
+                self._place_pin(lon, lat)
         except Exception as e:
             LOG.error(f"Error adding pin: {e}")
         finally:
-            try:
-                # release GL context if necessary
-                self.doneCurrent()
-            except Exception:
-                pass
+            self.doneCurrent()
     
