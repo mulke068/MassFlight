@@ -35,7 +35,7 @@ class WeatherManager:
 
         self._load_stations()
     
-    def get(self, lat, lon) -> tuple[dict, int]: 
+    def get(self, lat, lon): 
         """
         
         
@@ -68,12 +68,12 @@ class WeatherManager:
                 LOG.info("Requesting station data ... ")
                 self.station_code , self.station_distance = self._find_station(lat, lon, fetch_try)
                 LOG.info(f"Station code {self.station_code} distance {self.station_distance}")
+                fetch_trys += 1
                 req = requests.get(f'https://tgftp.nws.noaa.gov/data/observations/metar/stations/{self.station_code}.TXT', timeout=10)
                 LOG.info(req.status_code)
                 if req.status_code == 200:
                     req_station_data = req
                     break
-                fetch_trys += 1
 
 
             # station_data = "2025/11/28 09:50 ELLX 280950Z 14019G25MPS 0100 R24/0325N FG VV001 04/04 Q1018 NOSIG"
@@ -233,7 +233,6 @@ class WeatherManager:
     # i want to add that i can say that it should use the 2second nearest
     def _find_station(self, target_lat, target_lon, n=0):
         # nearest_station = 999999
-        station_code = None
         station_with_distance = []
 
         if self.last_target_lat != target_lat or self.last_target_lon != target_lon:
@@ -247,13 +246,16 @@ class WeatherManager:
                 #     station_code = station[2]
                 station_with_distance.append([distance, station[2]])
         
-            self.station_with_distance = station_with_distance.sort(key=lambda x: x[0])
+            station_with_distance.sort(key=lambda x: x[0])
+            self.station_with_distance = station_with_distance
             # station_with_distance.sort()
         else:
             station_with_distance = self.station_with_distance
 
         station_code = station_with_distance[n][1]
         station_distance = station_with_distance[n][0]
+        
+        print(station_code)
         
         return station_code, station_distance 
 

@@ -29,8 +29,6 @@ class SphereWidget(QOpenGLWidget):
         
         self.sphere = Sphere()
         self.overlay = Overlay()
-        self.pin1 = []
-        self.pin2 = []
 
         self.texture = None
         self.bg_texture = None
@@ -96,8 +94,7 @@ class SphereWidget(QOpenGLWidget):
 
         GL.glDisable(GL.GL_TEXTURE_2D)
 
-        self._draw_pins()
-        self._draw_trajectory()
+        self.overlay.draw()
         
         return super().paintGL()
 
@@ -148,48 +145,48 @@ class SphereWidget(QOpenGLWidget):
         GL.glDisable(GL.GL_TEXTURE_2D)
         GL.glEnable(GL.GL_DEPTH_TEST)
 
-    def _draw_pins(self):
-        """Draw pins"""
-        if not self.pin1 and not self.pin2:
-            return
+    # def _draw_pins(self):
+    #     """Draw pins"""
+    #     if not self.pin1 and not self.pin2:
+    #         return
         
-        GL.glPointSize(10)
-        # draw pins in red; pins stored as (lon, lat) for sphere-relative placement
-        GL.glColor3f(1.0, 0.0, 0.0)
-        GL.glBegin(GL.GL_POINTS)
-        for pin in self.pin1 + self.pin2:
-            # support both legacy (x,y,z) and new (lon,lat) storage
-            if isinstance(pin, (tuple, list)) and len(pin) == 2:
-                lon, lat = pin
-                x, y, z = lonlat_to_xyz(lon, lat, SPHERE_RADIUS)
-            elif isinstance(pin, (tuple, list)) and len(pin) == 3:
-                x, y, z = pin
-            else:
-                continue
+    #     GL.glPointSize(10)
+    #     # draw pins in red; pins stored as (lon, lat) for sphere-relative placement
+    #     GL.glColor3f(1.0, 0.0, 0.0)
+    #     GL.glBegin(GL.GL_POINTS)
+    #     for pin in self.pin1 + self.pin2:
+    #         # support both legacy (x,y,z) and new (lon,lat) storage
+    #         if isinstance(pin, (tuple, list)) and len(pin) == 2:
+    #             lon, lat = pin
+    #             x, y, z = lonlat_to_xyz(lon, lat, SPHERE_RADIUS)
+    #         elif isinstance(pin, (tuple, list)) and len(pin) == 3:
+    #             x, y, z = pin
+    #         else:
+    #             continue
 
-            GL.glVertex3f(x, y, z)
-        GL.glEnd()
+    #         GL.glVertex3f(x, y, z)
+    #     GL.glEnd()
     
-    def _draw_trajectory(self):
-        """Draw trajectory"""
-        points = self.trajectory.get_points()
-        if not points:
-            return
+    # def _draw_trajectory(self):
+    #     """Draw trajectory"""
+    #     points = self.trajectory.get_points()
+    #     if not points:
+    #         return
         
-        # draw trajectory in white
-        GL.glColor3f(1.0, 1.0, 1.0)
-        GL.glLineWidth(5)
-        GL.glBegin(GL.GL_LINE_STRIP)
-        for point in points:
-            GL.glVertex3f(point[0], point[1], point[2])
-        GL.glEnd()
+    #     # draw trajectory in white
+    #     GL.glColor3f(1.0, 1.0, 1.0)
+    #     GL.glLineWidth(5)
+    #     GL.glBegin(GL.GL_LINE_STRIP)
+    #     for point in points:
+    #         GL.glVertex3f(point[0], point[1], point[2])
+    #     GL.glEnd()
     
-    def _update_animation(self):
-        """Update animation"""
-        if self.trajectory.update():
-            self.update()
-        else:
-            self.animation_timer.stop()
+    # def _update_animation(self):
+    #     """Update animation"""
+    #     if self.trajectory.update():
+    #         self.update()
+    #     else:
+    #         self.animation_timer.stop()
     
     # ----- input handlers (mouse + wheel) -----
     def mousePressEvent(self, event):
@@ -211,33 +208,6 @@ class SphereWidget(QOpenGLWidget):
         self._last_mouse_pos = None
         self._mouse_button = None
         return super().mouseReleaseEvent(event)
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Space:
-            # reset camera on spacebar
-            self.camera.reset()
-            self.update()  
-        elif event.key() == Qt.Key.Key_C:
-            # clear pins on 'C' key
-            self.pin1.clear()
-            self.pin2.clear()
-            self.update()
-        # else if x is pressed clear only one pin starting with pin2
-        elif event.key() == Qt.Key.Key_X:
-            if self.pin2:
-                self.pin2.clear()
-            elif self.pin1:
-                self.pin1.clear()
-            self.update()
-        elif event.key() == Qt.Key.Key_T:
-            # toggle trajectory on 'T' key
-            if self.trajectory.is_animating():
-                self.trajectory.stop_animation()
-            else:
-                self.trajectory.start_animation(SAMPLE_TRAJECTORY)
-                self.update()
-
-
 
     def mouseMoveEvent(self, event):
         # do nothing if no last position recorded
@@ -275,6 +245,28 @@ class SphereWidget(QOpenGLWidget):
             self.update()
 
         return super().wheelEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Space:
+            # reset camera on spacebar
+            self.camera.reset()
+            self.update()  
+        elif event.key() == Qt.Key.Key_C:
+            self.overlay.clear()
+            self.update()
+        # else if x is pressed clear only one pin starting with pin2
+        elif event.key() == Qt.Key.Key_X:
+            self.overlay.remove_last_pin()
+            self.update()
+        elif event.key() == Qt.Key.Key_T: # TODO: Update after Finished Overlay 
+            # toggle trajectory on 'T' key
+            
+            if self.trajectory.is_animating():
+                self.trajectory.stop_animation()
+            else:
+                self.trajectory.start_animation(SAMPLE_TRAJECTORY)
+                self.update()
+
     
     def _get_ray_from_cursor(self, x, y):
         """Calculates a ray origin and direction from the cursor position.
@@ -334,31 +326,32 @@ class SphereWidget(QOpenGLWidget):
 
         return ray_origin, ray_dir
 
-    def _place_pin(self, lon, lat):
-        threshold = 0.25  # degrees
-
-        if not self.pin1:
-            self.pin1.append((lon, lat))
-            LOG.info(f"1st Pin at Lat,Lon: {lat:.2f},{lon:.2f}")
-            self.update()
-        elif not self.pin2:
-            is_close = abs(self.pin1[0][0] - lon) < threshold and abs(self.pin1[0][1] - lat) < threshold
-            if not is_close:
-                self.pin2.append((lon, lat))
-                LOG.info(f"2nd Pin at Lat, Lon: {lat:.2f},{lon:.2f}")
-                self.update()
-            else:
-                LOG.info("Rejected: Pin2 is too close to Pin1.")
-
     def _add_pin_at_cursor(self, x, y):
+        threshold = 0.25  # degrees
         try:
             self.makeCurrent()
             ray_origin, ray_dir = self._get_ray_from_cursor(x, y)
             intersection = ray_sphere_intersection(ray_origin, ray_dir, [0, 0, 0], SPHERE_RADIUS)
-
             if intersection:
+                self.overlay.add_pin(*intersection)
                 lon, lat = xyz_to_lonlat(*intersection)
-                self._place_pin(lon, lat)
+                LOG.info(f"Pin at Lat,Lon: {lat},{lon}")
+                self.update()
+
+            # if intersection:
+            #     lon, lat = xyz_to_lonlat(*intersection)
+            #     if not self.pin1:
+            #         self.pin1.append((lon, lat))
+            #         LOG.info(f"1st Pin at Lat,Lon: {lat},{lon}")
+            #         self.update()
+            #     elif not self.pin2:
+            #         is_close = abs(self.pin1[0][0] - lon) < threshold and abs(self.pin1[0][1] - lat) < threshold
+            #         if not is_close:
+            #             self.pin2.append((lon, lat))
+            #             LOG.info(f"2nd Pin at Lat, Lon: {lat},{lon}")
+            #             self.update()
+            #         else:
+            #             LOG.info("Rejected: Pin2 is too close to Pin1.")
         except Exception as e:
             LOG.error(f"Error adding pin: {e}")
         finally:

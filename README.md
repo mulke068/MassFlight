@@ -8,11 +8,14 @@ The Idea of our project is to develop a tool that calculates and simulates the t
 # Dependencies
 Python 3.9.13
 pyglet 1.5.27
+pyqt5
 
-https://www.windy.com
-https://www.ursinaengine.org
 
 Live Data Source: NOAA/NWS tg-ftp
+
+WGS84 ellipsoidal gravity formula
+
+$$ \gamma (\phi )=\gamma _{a}\frac{1+p\cdot \sin ^{2}\phi }{\sqrt{1-e^{2}\cdot \sin ^{2}\phi }}\ $$
 
 # setup guide
 
