@@ -37,15 +37,22 @@ class Overlay:
             self.trajectory.add_point(a[0][0], a[0][1], a[0][2]) # Replace a with calculated points
             self.trajectory.set_full_trajectory(self.trajectory.points.copy())
             self.trajectory.start_animation()
-        else:
+        elif not self.trajectory.full_trajectory:
             self.trajectory.set_full_trajectory(SAMPLE_TRAJECTORY)
+            self.trajectory.start_animation()
+        else:
             self.trajectory.start_animation()
         return True
     
+    def set_trajectory_data(self, points):
+        """Sets the trajectory data from a list of (x, y, z) points."""
+        self.trajectory.set_full_trajectory(points)
+        LOG.info(f"Trajectory data set with {len(points)} points")
+    
     
     def draw(self):
-        # GL.glEnable(GL.GL_BLEND)
-        # GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+        GL.glEnable(GL.GL_BLEND)
+        GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
         GL.glDisable(GL.GL_TEXTURE_2D)
         
         if self.pins:

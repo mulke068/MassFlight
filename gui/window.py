@@ -1,10 +1,12 @@
 from PyQt5 import QtGui
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget, QMessageBox, QPushButton
 from config.app_config import APP_NAME, ICON_FILE, WINDOW_HEIGHT, WINDOW_WIDTH, THEME
 from .widgets import sphere as sphere
 from .widgets import graph as graph
 from .widgets import sidebar as sidebar
+from .widgets.calculation_dialog import CalculationDialog
+from services.ballistic_manager import BallisticManager
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -17,6 +19,8 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QtGui.QIcon(ICON_FILE))
         self.pages = []
         self.setStyleSheet(f"QMainWindow {{ background-color: {THEME['background']}; }} QLabel {{ color: {THEME['text']}; }}")
+
+        self.ballistic_manager = BallisticManager()
 
         self.initUI()
 
@@ -72,6 +76,27 @@ class MainWindow(QMainWindow):
             self.button_group.append(button)
             sidebar_layout.addWidget(button)
 
+        sidebar_layout.addSpacing(20)
+        
+        # Calculate Button
+        calc_button = sidebar.SidebarButton("Calculate Trajectory")
+        calc_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {THEME['button_active']};
+                color: {THEME['text']};
+                border: none;
+                padding: 15px;
+                text-align: left;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 8px;
+                border-left: 5px solid {THEME['left_border_color']};
+            }}
+            QPushButton:hover {{ background-color: {THEME['button_hover']}; }}
+        """)
+        calc_button.clicked.connect(self.open_calculation_dialog)
+        sidebar_layout.addWidget(calc_button)
+        
         sidebar_layout.addSpacing(20)
         instructions = QLabel(
             "Controls:\n"
@@ -146,6 +171,44 @@ class MainWindow(QMainWindow):
                 pass
 
         LOG.info(f"Switched to page {index}")
+    
+    def open_calculation_dialog(self):
+        """Opens the calculation dialog and handles the result."""
+        dialog = CalculationDialog(self)
+        if dialog.exec_():
+            data = dialog.get_data()
+            LOG.info(f"Starting calculation with: {data}")
+            
+            try:
+                result = self.ballistic_manager.calculate_trajectory(
+                    lat=data['lat'],
+                    lon=data['lon'],
+                    altitude=data['altitude'],
+                    velocity=data['velocity'],
+                    heading=data['heading'],
+                    climb_angle=data['climb_angle'],
+                    projectile_params=data['projectile']
+                )
+                
+                # Update Sphere View
+                viz_points = result['visualization_points']
+                if viz_points:
+                    # Assuming page 0 is SphereWidget
+                    sphere_widget = self.pages[0]
+                    sphere_widget.overlay.set_trajectory_data(viz_points)
+                    sphere_widget.overlay.start_trajectory_animation()
+                    
+                    # Switch to World View
+                    self.page_switch(0)
+                    
+                    QMessageBox.information(self, "Calculation Complete", 
+                                            f"Trajectory calculated successfully.\n"
+                                            f"Max Altitude: {result['summary']['max_altitude']} m\n"
+                                            f"Distance: {result['summary']['total_distance']} m")
+                
+            except Exception as e:
+                LOG.error(f"Calculation failed: {e}")
+                QMessageBox.critical(self, "Error", f"Calculation failed: {str(e)}")
 
     def keyPressEvent(self, a0):
         if a0.key() == Qt.Key.Key_Q:
