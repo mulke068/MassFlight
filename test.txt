@@ -1,0 +1,8 @@
+can you try not using unitest but pytest and don't change the regex to re try using myenv then run the programm 
+idk why the projectile file there is but i tink it got messed ub can you bind the data after the calcultion points x,y,z .... to trajectory or overlay where we can see the trajectory or the projectile idk and when you want to run the file you need to add --> import sys
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path so Python can find 'config'
+sys.path.append(parent_dir) --> when we dont start the programm from the top main or something like that or it is becuase it dint run with myenv enabled if not then there is anohter problem with that python does not detect or see the file there is NO PROBLEM wiht the PACKAGES or LIBERYS 
