@@ -108,38 +108,33 @@ class BallisticManager:
         )
 
         # 5. Format Output for Visualization
-        # The GUI expects points in the format needed for the sphere.
-        # The simulation returns (lat, lon, alt).
-        # We need to convert these to 3D coordinates for the sphere visualization.
-        # Note: The sphere visualization uses a normalized radius (SPHERE_RADIUS).
-        # We need to map the altitude to the sphere surface.
-        
         viz_points = []
+        EARTH_RADIUS_M = 6371000.0
+        
         for p in simulation_result["points"]:
             p_lat, p_lon, p_alt = p
-            # Map altitude to sphere scale? 
-            # Usually visualizations exaggerate altitude or just stick to surface.
-            # For now, let's map it to the surface + scaled altitude.
-            # Assuming SPHERE_RADIUS is the earth surface.
-            # Earth Radius ~ 6371km.
-            # Scale factor: If we want to see it, we might need to exaggerate.
-            # But for "True Scale", we just add it.
-            # However, the sphere engine might expect specific units.
-            # Let's just use the standard lonlat_to_xyz with the radius.
-            
-            # Simple approach: Project to surface (radius)
-            # Or better: radius + (altitude / EARTH_RADIUS * radius)
-            # But SPHERE_RADIUS in config is likely the OpenGL unit size (e.g. 10.0).
-            EARTH_RADIUS_M = 6371000.0
-            scale_alt = (p_alt / EARTH_RADIUS_M) * SPHERE_RADIUS * 100 # Exaggerate 100x for visibility?
-            # Let's stick to surface for now or small offset
-            
+            scale_alt = (p_alt / EARTH_RADIUS_M) * SPHERE_RADIUS * 100 
             x, y, z = lonlat_to_xyz(p_lon, p_lat, SPHERE_RADIUS + (scale_alt if p_alt > 0 else 0))
             viz_points.append((x, y, z))
 
+        # Reformat Telemetry: List of Dicts -> Dict of Lists
+        # From: [{'time': 0, 'alt': 0}, ...]
+        # To: {'time': [0, ...], 'alt': [0, ...]}
+        raw_telemetry = simulation_result["telemetry"]
+        formatted_telemetry = {
+            "time": [d["time"] for d in raw_telemetry],
+            "altitude": [d["altitude"] for d in raw_telemetry],
+            "velocity": [d["velocity"] for d in raw_telemetry],
+            "distance": [d["distance"] for d in raw_telemetry],
+            "latitude": [p[0] for p in simulation_result["points"][::10]] # Approx matching downsample
+        }
+        # Note: Points are not downsampled in physics engine return, but telemetry is.
+        # We need to be careful. Physics engine returns points for every step, telemetry every 10.
+        # Let's just trust the telemetry dict keys.
+
         return {
             "visualization_points": viz_points,
-            "telemetry": simulation_result["telemetry"],
+            "telemetry": formatted_telemetry,
             "summary": simulation_result["summary"]
         }
 

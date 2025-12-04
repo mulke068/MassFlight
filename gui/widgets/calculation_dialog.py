@@ -79,6 +79,33 @@ class CalculationDialog(QDialog):
         launch_layout.addRow("Climb Angle:", self.climb_input)
         launch_group.setLayout(launch_layout)
         layout.addWidget(launch_group)
+
+        # --- Target Parameters (Optional) ---
+        target_group = QGroupBox("Target Location (Optional)")
+        target_layout = QFormLayout()
+        
+        self.target_lat_input = QDoubleSpinBox()
+        self.target_lat_input.setRange(-90, 90)
+        self.target_lat_input.setDecimals(6)
+        self.target_lat_input.setSpecialValueText("None")
+        self.target_lat_input.setValue(0) # Default None-ish
+        
+        self.target_lon_input = QDoubleSpinBox()
+        self.target_lon_input.setRange(-180, 180)
+        self.target_lon_input.setDecimals(6)
+        self.target_lon_input.setSpecialValueText("None")
+        self.target_lon_input.setValue(0)
+        
+        target_layout.addRow("Target Latitude:", self.target_lat_input)
+        target_layout.addRow("Target Longitude:", self.target_lon_input)
+        target_group.setLayout(target_layout)
+        layout.addWidget(target_group)
+        
+        # Connect signals to auto-update heading if target changes
+        self.target_lat_input.valueChanged.connect(self.update_heading_from_target)
+        self.target_lon_input.valueChanged.connect(self.update_heading_from_target)
+        self.lat_input.valueChanged.connect(self.update_heading_from_target)
+        self.lon_input.valueChanged.connect(self.update_heading_from_target)
         
         # --- Projectile Parameters ---
         proj_group = QGroupBox("Projectile Parameters")
@@ -121,6 +148,38 @@ class CalculationDialog(QDialog):
         layout.addLayout(btn_layout)
         
         self.setLayout(layout)
+
+    def set_initial_values(self, lat=None, lon=None, heading=None, target_lat=None, target_lon=None):
+        """Pre-fills the dialog with provided values."""
+        if lat is not None:
+            self.lat_input.setValue(lat)
+        if lon is not None:
+            self.lon_input.setValue(lon)
+        if heading is not None:
+            self.heading_input.setValue(heading)
+        if target_lat is not None:
+            self.target_lat_input.setValue(target_lat)
+        if target_lon is not None:
+            self.target_lon_input.setValue(target_lon)
+
+    def update_heading_from_target(self):
+        """Calculates heading if target is set."""
+        # Simple check: if target is 0,0 (default), ignore
+        t_lat = self.target_lat_input.value()
+        t_lon = self.target_lon_input.value()
+        
+        if t_lat == 0 and t_lon == 0:
+            return
+
+        s_lat = self.lat_input.value()
+        s_lon = self.lon_input.value()
+        
+        try:
+            from gui.engine.coordinates import calculate_bearing
+            heading = calculate_bearing(s_lat, s_lon, t_lat, t_lon)
+            self.heading_input.setValue(heading)
+        except ImportError:
+            pass # Should not happen if coordinates.py is fixed
 
     def get_data(self):
         """Returns a dictionary of all input values."""

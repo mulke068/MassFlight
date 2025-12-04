@@ -1,4 +1,5 @@
 """Coordinate system conversions for sphere mapping"""
+import math
 from math import asin, atan2, cos, sin, sqrt, pi
 
 
@@ -56,3 +57,19 @@ def ray_sphere_intersection(ray_origin, ray_dir, sphere_center, sphere_radius):
     
     intersection = [ray_origin[i] + t * ray_dir[i] for i in range(3)]
     return intersection
+
+
+def calculate_bearing(lat1, lon1, lat2, lon2):
+    """Calculates the initial bearing from point 1 to point 2."""
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    d_lon_rad = math.radians(lon2 - lon1)
+
+    y = math.sin(d_lon_rad) * math.cos(lat2_rad)
+    x = math.cos(lat1_rad) * math.sin(lat2_rad) - \
+        math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(d_lon_rad)
+    
+    bearing_rad = math.atan2(y, x)
+    bearing_deg = math.degrees(bearing_rad)
+    
+    return (bearing_deg + 360) % 360

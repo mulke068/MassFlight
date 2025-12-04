@@ -12,7 +12,9 @@ from gui.engine.overlay import Overlay
 from gui.engine.sphere import Sphere
 from gui.engine.texture_manager import TextureManager
 from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
+from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
 from gui.engine.trajectory import Trajectory, SAMPLE_TRAJECTORY
+
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -42,6 +44,10 @@ class SphereWidget(QOpenGLWidget):
         # Animation timer for trajectory
         self.animation_timer = QTimer()
         self.animation_timer.timeout.connect(self._update_trajectory_animation)
+
+    def start_animation(self):
+        self.overlay.start_trajectory_animation()
+        self.animation_timer.start(16)
 
     def initializeGL(self):
         GL.glEnable(GL.GL_DEPTH_TEST)
@@ -349,7 +355,7 @@ class SphereWidget(QOpenGLWidget):
             if intersection:
                 self.overlay.add_pin(*intersection)
                 lon, lat = xyz_to_lonlat(*intersection)
-                LOG.info(f"Pin at Lat,Lon: {lat},{lon}")
+                LOG.debug(f"Pin at Lat,Lon: {lat},{lon}")
                 self.update()
 
             # if intersection:

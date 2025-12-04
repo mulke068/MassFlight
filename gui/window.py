@@ -6,6 +6,7 @@ from .widgets import sphere as sphere
 from .widgets import graph as graph
 from .widgets import sidebar as sidebar
 from .widgets.calculation_dialog import CalculationDialog
+from .widgets.overlay_widgets import FloatingButton, ResultsPanel
 from services.ballistic_manager import BallisticManager
 import logging
 
@@ -78,26 +79,7 @@ class MainWindow(QMainWindow):
 
         sidebar_layout.addSpacing(20)
         
-        # Calculate Button
-        calc_button = sidebar.SidebarButton("Calculate Trajectory")
-        calc_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {THEME['button_active']};
-                color: {THEME['text']};
-                border: none;
-                padding: 15px;
-                text-align: left;
-                font-size: 14px;
-                font-weight: bold;
-                border-radius: 8px;
-                border-left: 5px solid {THEME['left_border_color']};
-            }}
-            QPushButton:hover {{ background-color: {THEME['button_hover']}; }}
-        """)
-        calc_button.clicked.connect(self.open_calculation_dialog)
-        sidebar_layout.addWidget(calc_button)
-        
-        sidebar_layout.addSpacing(20)
+        # Instructions
         instructions = QLabel(
             "Controls:\n"
             "• Left drag: Rotate\n"
@@ -142,13 +124,36 @@ class MainWindow(QMainWindow):
         
         self.stacked_widget = QStackedWidget()
         
+        # --- Page 0: World View with Overlay UI ---
+        self.world_view_container = QWidget()
+        world_layout = QVBoxLayout(self.world_view_container)
+        world_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.sphere_widget = sphere.SphereWidget()
+        world_layout.addWidget(self.sphere_widget)
+        
+        # Floating UI Elements (Parented to container to float over SphereWidget)
+        self.calc_btn = FloatingButton("Calculate", self.world_view_container)
+        self.calc_btn.clicked.connect(self.open_calculation_dialog)
+        
+        self.animate_btn = FloatingButton("Animate", self.world_view_container)
+        self.animate_btn.clicked.connect(self.run_animation)
+        self.animate_btn.hide() # Hidden initially
+        
+        self.reset_btn = FloatingButton("Reset", self.world_view_container)
+        self.reset_btn.clicked.connect(self.reset_simulation)
+        self.reset_btn.hide() # Hidden initially
+
+        self.results_panel = ResultsPanel(self.world_view_container)
+        
+        # --- Pages List ---
         self.pages = [
-            sphere.SphereWidget(),
+            self.world_view_container,
             graph.GraphWidget([( 0.0, 13.0),( 0.5, 15.0),( 1.0, 16.0) ], graph_type='Altitude'),
             graph.GraphWidget(graph_type='Latitude'),
             graph.GraphWidget(graph_type='Velocity')
-            
         ]
+        
         for page in self.pages:
             self.stacked_widget.addWidget(page)
         
@@ -157,7 +162,49 @@ class MainWindow(QMainWindow):
         content_layout.addWidget(self.stacked_widget)
         
         content_frame.setLayout(content_layout)
+        
         return content_frame
+
+    def resizeEvent(self, event):
+        # Handle manual positioning of floating widgets when window resizes
+        if hasattr(self, 'world_view_container') and self.world_view_container.isVisible():
+            w = self.world_view_container.width()
+            h = self.world_view_container.height()
+            padding = 20
+            
+            # Top Right: Calculate
+            self.calc_btn.move(w - self.calc_btn.width() - padding, padding)
+            
+            # Below Calculate: Animate
+            self.animate_btn.move(w - self.animate_btn.width() - padding, 
+                                  padding + self.calc_btn.height() + 10)
+            
+            # Below Animate: Reset
+            self.reset_btn.move(w - self.reset_btn.width() - padding,
+                                padding + self.calc_btn.height() + 10 + self.animate_btn.height() + 10)
+
+            # Bottom Right: Results
+            panel_w = self.results_panel.width()
+            panel_h = self.results_panel.height()
+            self.results_panel.move(w - panel_w - padding, h - panel_h - padding)
+            
+        super().resizeEvent(event)
+
+    def run_animation(self):
+        """Starts the trajectory animation on the sphere."""
+        self.sphere_widget.start_animation()
+
+    def reset_simulation(self):
+        """Clears the simulation results and resets the view."""
+        self.sphere_widget.overlay.clear()
+        self.sphere_widget.update()
+        self.results_panel.hide()
+        self.animate_btn.hide()
+        self.reset_btn.hide()
+        
+        # Clear graphs
+        for i in range(1, 4):
+            self.pages[i].update_data([])
 
     def page_switch(self, index):
         self.stacked_widget.setCurrentIndex(index)
@@ -175,6 +222,31 @@ class MainWindow(QMainWindow):
     def open_calculation_dialog(self):
         """Opens the calculation dialog and handles the result."""
         dialog = CalculationDialog(self)
+        
+        # Pre-fill with Pin Data
+        # Access sphere_widget via the container now
+        sphere_widget = self.sphere_widget
+        pins = sphere_widget.overlay.pins
+        
+        start_lat, start_lon, heading = None, None, None
+        
+        if len(pins) >= 1:
+            # Pin 1: Start Location
+            from gui.engine.coordinates import xyz_to_lonlat
+            p1 = pins[0]
+            start_lon, start_lat = xyz_to_lonlat(p1[0], p1[1], p1[2])
+            
+            if len(pins) >= 2:
+                # Pin 2: Target - Calculate Heading
+                p2 = pins[1]
+                end_lon, end_lat = xyz_to_lonlat(p2[0], p2[1], p2[2])
+                
+                # Calculate initial bearing
+                from gui.engine.coordinates import calculate_bearing
+                heading = calculate_bearing(start_lat, start_lon, end_lat, end_lon)
+        
+        dialog.set_initial_values(lat=start_lat, lon=start_lon, heading=heading)
+
         if dialog.exec_():
             data = dialog.get_data()
             LOG.info(f"Starting calculation with: {data}")
@@ -193,19 +265,34 @@ class MainWindow(QMainWindow):
                 # Update Sphere View
                 viz_points = result['visualization_points']
                 if viz_points:
-                    # Assuming page 0 is SphereWidget
-                    sphere_widget = self.pages[0]
                     sphere_widget.overlay.set_trajectory_data(viz_points)
-                    sphere_widget.overlay.start_trajectory_animation()
+                    # STOP AUTO ANIMATION: sphere_widget.overlay.start_trajectory_animation()
+                    # sphere_widget.animation_timer.start(16)
                     
-                    # Switch to World View
-                    self.page_switch(0)
+                    # Show Results Panel & Buttons
+                    self.results_panel.update_results(result['summary'], data)
+                    self.animate_btn.show()
+                    self.reset_btn.show()
                     
-                    QMessageBox.information(self, "Calculation Complete", 
-                                            f"Trajectory calculated successfully.\n"
-                                            f"Max Altitude: {result['summary']['max_altitude']} m\n"
-                                            f"Distance: {result['summary']['total_distance']} m")
-                
+                    # Force layout update to position buttons
+                    self.world_view_container.update()
+                    
+                    # Update Graphs
+                    telemetry = result['telemetry']
+                    times = telemetry.get('time', [])
+                    
+                    # Altitude Graph (Page 1)
+                    alts = telemetry.get('altitude', [])
+                    self.pages[1].update_data(list(zip(times, alts)))
+                    
+                    # Latitude Graph (Page 2)
+                    lats = telemetry.get('latitude', [])
+                    self.pages[2].update_data(list(zip(times, lats)))
+                    
+                    # Velocity Graph (Page 3)
+                    vels = telemetry.get('velocity', [])
+                    self.pages[3].update_data(list(zip(times, vels)))
+
             except Exception as e:
                 LOG.error(f"Calculation failed: {e}")
                 QMessageBox.critical(self, "Error", f"Calculation failed: {str(e)}")

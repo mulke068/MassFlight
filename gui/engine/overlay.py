@@ -22,6 +22,9 @@ class Overlay:
             self.pins.append((x,y,z))
         LOG.debug(f'Pin added at {x}, {y}, {z}', exc_info=1)
 
+    def get_pins(self, index):
+        return self.pins[index]
+
     def clear_pins(self):
         self.pins = []
         LOG.debug('Pins cleared', exc_info=1)
