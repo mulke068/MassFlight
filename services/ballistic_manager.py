@@ -78,8 +78,8 @@ class BallisticManager:
         # vy = v * cos(climb) * cos(heading)
         # vz = v * sin(climb)
         
-        rad_heading = math.radians(heading)
-        rad_climb = math.radians(climb_angle)
+        rad_heading = heading * (math.pi / 180)
+        rad_climb = climb_angle * (math.pi / 180)
         
         vx = velocity * math.cos(rad_climb) * math.sin(rad_heading)
         vy = velocity * math.cos(rad_climb) * math.cos(rad_heading)
@@ -113,7 +113,7 @@ class BallisticManager:
         
         for p in simulation_result["points"]:
             p_lat, p_lon, p_alt = p
-            scale_alt = (p_alt / EARTH_RADIUS_M) * SPHERE_RADIUS * 100 
+            scale_alt = (p_alt / EARTH_RADIUS_M) * SPHERE_RADIUS * 2 
             x, y, z = lonlat_to_xyz(p_lon, p_lat, SPHERE_RADIUS + (scale_alt if p_alt > 0 else 0))
             viz_points.append((x, y, z))
 

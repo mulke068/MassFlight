@@ -162,6 +162,41 @@ class CalculationDialog(QDialog):
         if target_lon is not None:
             self.target_lon_input.setValue(target_lon)
 
+        # Target Logic
+        if target_lat is not None and target_lon is not None:
+            # Lock Heading
+            self.heading_input.setReadOnly(True)
+            self.heading_input.setStyleSheet("background-color: #222; color: #888;")
+            self.heading_input.setToolTip("Locked to Target Bearing")
+            
+            # Calculate Distance for Velocity Estimation
+            try:
+                from gui.engine.coordinates import calculate_distance
+                dist_km = calculate_distance(lat, lon, target_lat, target_lon)
+                dist_m = dist_km * 1000.0
+                
+                # Vacuum approximation for 45 degree launch: Range = v^2 / g
+                # v = sqrt(Range * g)
+                import math
+                g = 9.81
+                v_est = math.sqrt(dist_m * g)
+                
+                # Apply a rough drag factor (e.g. 1.3x) since vacuum is too optimistic
+                v_est *= 1.3 
+                
+                self.vel_input.setValue(v_est)
+                self.climb_input.setValue(45.0)
+                
+                # Add a label or feedback
+                self.setWindowTitle("Ballistic Calculation - TARGET MODE")
+                
+            except Exception as e:
+                print(f"Error estimating velocity: {e}")
+        else:
+             self.heading_input.setReadOnly(False)
+             self.heading_input.setStyleSheet("")
+             self.setWindowTitle("Ballistic Calculation Settings")
+
     def update_heading_from_target(self):
         """Calculates heading if target is set."""
         # Simple check: if target is 0,0 (default), ignore

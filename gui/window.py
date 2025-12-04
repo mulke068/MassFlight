@@ -6,7 +6,7 @@ from .widgets import sphere as sphere
 from .widgets import graph as graph
 from .widgets import sidebar as sidebar
 from .widgets.calculation_dialog import CalculationDialog
-from .widgets.overlay_widgets import FloatingButton, ResultsPanel
+from .widgets.world_view import WorldViewContainer
 from services.ballistic_manager import BallisticManager
 import logging
 
@@ -125,31 +125,18 @@ class MainWindow(QMainWindow):
         self.stacked_widget = QStackedWidget()
         
         # --- Page 0: World View with Overlay UI ---
-        self.world_view_container = QWidget()
-        world_layout = QVBoxLayout(self.world_view_container)
-        world_layout.setContentsMargins(0, 0, 0, 0)
-        
         self.sphere_widget = sphere.SphereWidget()
-        world_layout.addWidget(self.sphere_widget)
+        self.world_view_container = WorldViewContainer(self.sphere_widget)
         
-        # Floating UI Elements (Parented to container to float over SphereWidget)
-        self.calc_btn = FloatingButton("Calculate", self.world_view_container)
-        self.calc_btn.clicked.connect(self.open_calculation_dialog)
-        
-        self.animate_btn = FloatingButton("Animate", self.world_view_container)
-        self.animate_btn.clicked.connect(self.run_animation)
-        self.animate_btn.hide() # Hidden initially
-        
-        self.reset_btn = FloatingButton("Reset", self.world_view_container)
-        self.reset_btn.clicked.connect(self.reset_simulation)
-        self.reset_btn.hide() # Hidden initially
-
-        self.results_panel = ResultsPanel(self.world_view_container)
+        # Connect buttons from container
+        self.world_view_container.calc_btn.clicked.connect(self.open_calculation_dialog)
+        self.world_view_container.animate_btn.clicked.connect(self.run_animation)
+        self.world_view_container.reset_btn.clicked.connect(self.reset_simulation)
         
         # --- Pages List ---
         self.pages = [
             self.world_view_container,
-            graph.GraphWidget([( 0.0, 13.0),( 0.5, 15.0),( 1.0, 16.0) ], graph_type='Altitude'),
+            graph.GraphWidget(graph_type='Altitude'),
             graph.GraphWidget(graph_type='Latitude'),
             graph.GraphWidget(graph_type='Velocity')
         ]
@@ -165,31 +152,6 @@ class MainWindow(QMainWindow):
         
         return content_frame
 
-    def resizeEvent(self, event):
-        # Handle manual positioning of floating widgets when window resizes
-        if hasattr(self, 'world_view_container') and self.world_view_container.isVisible():
-            w = self.world_view_container.width()
-            h = self.world_view_container.height()
-            padding = 20
-            
-            # Top Right: Calculate
-            self.calc_btn.move(w - self.calc_btn.width() - padding, padding)
-            
-            # Below Calculate: Animate
-            self.animate_btn.move(w - self.animate_btn.width() - padding, 
-                                  padding + self.calc_btn.height() + 10)
-            
-            # Below Animate: Reset
-            self.reset_btn.move(w - self.reset_btn.width() - padding,
-                                padding + self.calc_btn.height() + 10 + self.animate_btn.height() + 10)
-
-            # Bottom Right: Results
-            panel_w = self.results_panel.width()
-            panel_h = self.results_panel.height()
-            self.results_panel.move(w - panel_w - padding, h - panel_h - padding)
-            
-        super().resizeEvent(event)
-
     def run_animation(self):
         """Starts the trajectory animation on the sphere."""
         self.sphere_widget.start_animation()
@@ -198,9 +160,11 @@ class MainWindow(QMainWindow):
         """Clears the simulation results and resets the view."""
         self.sphere_widget.overlay.clear()
         self.sphere_widget.update()
-        self.results_panel.hide()
-        self.animate_btn.hide()
-        self.reset_btn.hide()
+        
+        # Hide UI via container
+        self.world_view_container.results_panel.hide()
+        self.world_view_container.animate_btn.hide()
+        self.world_view_container.reset_btn.hide()
         
         # Clear graphs
         for i in range(1, 4):
@@ -227,25 +191,31 @@ class MainWindow(QMainWindow):
         # Access sphere_widget via the container now
         sphere_widget = self.sphere_widget
         pins = sphere_widget.overlay.pins
+        LOG.info(f"Found {len(pins)} pins: {pins}")
         
         start_lat, start_lon, heading = None, None, None
+        target_lat, target_lon = None, None
         
         if len(pins) >= 1:
             # Pin 1: Start Location
             from gui.engine.coordinates import xyz_to_lonlat
             p1 = pins[0]
             start_lon, start_lat = xyz_to_lonlat(p1[0], p1[1], p1[2])
+            LOG.info(f"Pin 1 (Start): Lat={start_lat}, Lon={start_lon}")
             
             if len(pins) >= 2:
                 # Pin 2: Target - Calculate Heading
                 p2 = pins[1]
-                end_lon, end_lat = xyz_to_lonlat(p2[0], p2[1], p2[2])
+                target_lon, target_lat = xyz_to_lonlat(p2[0], p2[1], p2[2])
+                LOG.info(f"Pin 2 (Target): Lat={target_lat}, Lon={target_lon}")
                 
                 # Calculate initial bearing
                 from gui.engine.coordinates import calculate_bearing
-                heading = calculate_bearing(start_lat, start_lon, end_lat, end_lon)
+                heading = calculate_bearing(start_lat, start_lon, target_lat, target_lon)
+                LOG.info(f"Calculated Heading: {heading}")
         
-        dialog.set_initial_values(lat=start_lat, lon=start_lon, heading=heading)
+        dialog.set_initial_values(lat=start_lat, lon=start_lon, heading=heading, 
+                                  target_lat=target_lat, target_lon=target_lon)
 
         if dialog.exec_():
             data = dialog.get_data()
@@ -270,12 +240,12 @@ class MainWindow(QMainWindow):
                     # sphere_widget.animation_timer.start(16)
                     
                     # Show Results Panel & Buttons
-                    self.results_panel.update_results(result['summary'], data)
-                    self.animate_btn.show()
-                    self.reset_btn.show()
+                    self.world_view_container.results_panel.update_results(result['summary'], data)
+                    self.world_view_container.animate_btn.show()
+                    self.world_view_container.reset_btn.show()
                     
                     # Force layout update to position buttons
-                    self.world_view_container.update()
+                    self.world_view_container.update_layout()
                     
                     # Update Graphs
                     telemetry = result['telemetry']

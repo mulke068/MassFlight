@@ -127,6 +127,20 @@ class GraphWidget(QWidget):
         ax.set_ylim(new_bottom, new_top)
         self.canvas.draw_idle()
 
+    def update_data(self, new_values):
+        """Updates the graph with new data points."""
+        if not new_values:
+            self.values = []
+            self.x_axis = []
+            self.y_axis = []
+        else:
+            self.values = new_values
+            self.x_axis, self.y_axis = zip(*self.values)
+        
+        self.figure.clear()
+        self.initUI()
+        self.canvas.draw()
+
     def draw(self):
         layout = QVBoxLayout()
         self.figure = Figure(facecolor='#1e1e1e')
