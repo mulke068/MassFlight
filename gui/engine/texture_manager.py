@@ -1,17 +1,17 @@
+"""
+Texture manager for loading and managing OpenGL textures.
+"""
+
 from typing import Any
 import numpy as np
-#import pyglet
 from OpenGL import GL
 from PIL import Image
 import os
 import logging
-
 LOG = logging.getLogger(__name__)
 
-# texture
-# image from solarsystemscope
 class TextureManager:
-    def __init__(self, assets_path='assets/textures'):
+    def __init__(self, assets_path='assets/textures'): # change
         self.texture_name = None
         self.bg_sprite_name = None
         self.assets_path = assets_path

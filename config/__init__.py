@@ -1,10 +1,3 @@
-# config package init
 from .app_config import *
-from .others_config import *
+from .other_config import *
 from .render_config import *
-# from .render_config import RenderConfig
-
-# __all__ = [
-#     'AppConfig',
-#     # 'RenderConfig'
-# ]

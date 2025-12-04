@@ -1,6 +1,12 @@
-"""Coordinate system conversions for sphere mapping"""
-from math import asin, atan2, cos, sin, sqrt, pi
+"""
+Coordinate conversion utilities for 3D graphics applications.
+This module provides functions to convert between Cartesian coordinates (x, y, z)
+and geographic coordinates (longitude, latitude).
+"""
 
+from math import asin, atan2, cos, sin, sqrt, pi
+import logging
+LOG = logging.getLogger(__name__)
 
 def xyz_to_lonlat(x, y, z):
     """Convert 3D Cartesian coordinates to longitude/latitude"""
@@ -18,7 +24,6 @@ def xyz_to_lonlat(x, y, z):
     
     return lon, lat
 
-
 def lonlat_to_xyz(lon, lat, radius):
     """Convert longitude/latitude to 3D Cartesian coordinates"""
     lon_rad = -(lon * pi / 180)
@@ -29,7 +34,6 @@ def lonlat_to_xyz(lon, lat, radius):
     z = radius * cos(lat_rad) * sin(lon_rad)
     
     return x, y, z
-
 
 def ray_sphere_intersection(ray_origin, ray_dir, sphere_center, sphere_radius):
     """Calculate intersection point of ray with sphere"""

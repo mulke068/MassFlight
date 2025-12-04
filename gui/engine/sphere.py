@@ -1,11 +1,14 @@
-import logging
-from math import cos,sin,pi
+"""
+Sphere rendering engine module.
+This module provides a Sphere class that creates and renders a textured sphere mesh using OpenGL.
+"""
 
 import OpenGL.GL as GL
 from config.render_config import SPHERE_RADIUS, SPHERE_RESULUTION
 from utils.utils import map_value
+from math import cos,sin,pi
 from typing import Tuple, List
-
+import logging
 LOG = logging.getLogger(__name__)
 
 class Sphere:
@@ -14,21 +17,17 @@ class Sphere:
         self.radius = SPHERE_RADIUS
         self.resolution = SPHERE_RESULUTION
         self.display_list = None
-        #self._create_mesh()                gibt opengl err: 1282
     
     def _create_mesh(self):
-
         self.display_list = GL.glGenLists(1)
         GL.glNewList(self.display_list, GL.GL_COMPILE)
 
         vertices, texture_coords, indices = self._sphere_mesh(self.radius, self.resolution)
-        
-        ## Need to convert to C-type arrays for OpenGL
+
         v_num = len(vertices)
         t_num = len(texture_coords)
         i_num = len(indices)
 
-        # c-arrays
         vertex_array = (GL.GLfloat * v_num)(*vertices)
         texture_array = (GL.GLfloat * t_num)(*texture_coords)
         index_array = (GL.GLuint * i_num)(*indices)
@@ -53,16 +52,7 @@ class Sphere:
         
         LOG.info(f"Sphere mesh created with {len(indices)//3} triangles.")
 
-    # normal sphere coordinates
-    # φ lon -180 - 0 - 180   = 360 points
-    # θ lat  -90  - 0 - 90    = 180 points
-
-    # x,y,z
-    # x = r * sin(θ) * cos(φ)
-    # y = r * sin(θ) * sin(φ)
-    # z = r * cos(θ)
     def _sphere_mesh(self, radius, resolution) -> Tuple[List[float], List[float], List[int]]:
-    # def _sphere_mesh(radius, resolution):
         """
         Create a UV sphere mesh with proper lat/lon mapping
         lat (θ): -90° to +90° (south to north pole)
@@ -105,7 +95,6 @@ class Sphere:
     def draw(self):
         if self.texture:
             GL.glEnable(GL.GL_TEXTURE_2D)
-            # GL.glBindTexture(self.texture.target, self.texture.id)
             GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture)
             GL.glColor3f(1,1,1)
             

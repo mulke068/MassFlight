@@ -15,7 +15,7 @@ import requests
 from regex import regex
 import logging
 
-from config.others_config import CACHE_FILE, MAX_FETCH_ATTEMPTS
+from config.other_config import CACHE_FILE, MAX_FETCH_ATTEMPTS
 
 LOG = logging.getLogger(__name__)
 
