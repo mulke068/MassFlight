@@ -155,6 +155,7 @@ class MainWindow(QMainWindow):
     def run_animation(self):
         """Starts the trajectory animation on the sphere."""
         self.sphere_widget.start_animation()
+        LOG.info("Animation started")
 
     def reset_simulation(self):
         """Clears the simulation results and resets the view."""
@@ -165,6 +166,8 @@ class MainWindow(QMainWindow):
         self.world_view_container.results_panel.hide()
         self.world_view_container.animate_btn.hide()
         self.world_view_container.reset_btn.hide()
+        self.world_view_container.speed_label.hide()
+        self.world_view_container.speed_slider.hide()
         
         # Clear graphs
         for i in range(1, 4):
@@ -236,13 +239,16 @@ class MainWindow(QMainWindow):
                 viz_points = result['visualization_points']
                 if viz_points:
                     sphere_widget.overlay.set_trajectory_data(viz_points)
-                    # STOP AUTO ANIMATION: sphere_widget.overlay.start_trajectory_animation()
-                    # sphere_widget.animation_timer.start(16)
+                    
+                    # Auto-Fit Camera
+                    # sphere_widget.fit_view_to_trajectory(viz_points)
                     
                     # Show Results Panel & Buttons
                     self.world_view_container.results_panel.update_results(result['summary'], data)
                     self.world_view_container.animate_btn.show()
                     self.world_view_container.reset_btn.show()
+                    self.world_view_container.speed_label.show()
+                    self.world_view_container.speed_slider.show()
                     
                     # Force layout update to position buttons
                     self.world_view_container.update_layout()

@@ -12,7 +12,7 @@ import json
 from math import cos, pi, asin, sqrt
 import os
 import requests
-from regex import regex
+import re
 import logging
 
 from config.others_config import CACHE_FILE, MAX_FETCH_ATTEMPTS
@@ -89,7 +89,7 @@ class WeatherManager:
 
             try:
                 # Timestamp
-                r_time = regex.search(r"([0-9]{6}Z)", station_data).group(1)
+                r_time = re.search(r"([0-9]{6}Z)", station_data).group(1)
                 if r_time:
                     date = r_time[0:2]
                     h = r_time[2:4]
@@ -108,7 +108,7 @@ class WeatherManager:
 
             try:
                 # Wind Data
-                r_wind = regex.search(r"(\d{3}|VRB)(\d{2})(\w{1}\d{2})?(KT|MPS|KMH)", station_data)
+                r_wind = re.search(r"(\d{3}|VRB)(\d{2})(\w{1}\d{2})?(KT|MPS|KMH)", station_data)
             
                 if r_wind:
                     direction = r_wind.group(1)
@@ -129,7 +129,7 @@ class WeatherManager:
 
             try:
                 # Temperature Data
-                r_temp = regex.search(r'(?<!R)(M?\d{2})/(M?\d{2})', station_data)
+                r_temp = re.search(r'(?<!R)(M?\d{2})/(M?\d{2})', station_data)
                 if r_temp:
                     temp = r_temp.group(1).replace('M', '-')
                     dewpoint = r_temp.group(2).replace('M', '-')
@@ -146,7 +146,7 @@ class WeatherManager:
             try:
                 # Air Pressure (Altimeter)
                 # Q = Matrix , A = Imperial
-                r_qnh = regex.search(r'([AQ])(\d{4})', station_data)
+                r_qnh = re.search(r'([AQ])(\d{4})', station_data)
                 if r_qnh:
                     unit = r_qnh.group(1)
                     pressure = r_qnh.group(2)
@@ -265,7 +265,7 @@ class WeatherManager:
         Decimal Degrees = degrees + (minutes/60) + (seconds/3600)
 
         """
-        reg = regex.match(r"(\d+)-(\d+)([NSWE])", dm)
+        reg = re.match(r"(\d+)-(\d+)([NSWE])", dm)
 
         if not reg:
             return None

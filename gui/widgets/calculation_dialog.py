@@ -2,9 +2,41 @@
 
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                              QLineEdit, QPushButton, QFormLayout, QGroupBox, 
-                             QComboBox, QDoubleSpinBox)
-from PyQt5.QtCore import Qt
+                             QComboBox, QDoubleSpinBox, QProgressDialog, QApplication,
+                             QProgressBar, QMessageBox)
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from config.app_config import THEME
+
+class SolverWorker(QThread):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(float, float) # velocity, heading
+    error = pyqtSignal(str)
+
+    def __init__(self, manager, data, target_lat, target_lon):
+        super().__init__()
+        self.manager = manager
+        self.data = data
+        self.target_lat = target_lat
+        self.target_lon = target_lon
+
+    def run(self):
+        try:
+            vel, heading = self.manager.solve_firing_solution(
+                lat=self.data['lat'],
+                lon=self.data['lon'],
+                alt=self.data['altitude'],
+                target_lat=self.target_lat,
+                target_lon=self.target_lon,
+                climb_angle=self.data['climb_angle'],
+                projectile_params=self.data['projectile'],
+                progress_callback=self.report_progress
+            )
+            self.finished.emit(vel if vel else 0.0, heading if heading else 0.0)
+        except Exception as e:
+            self.error.emit(str(e))
+
+    def report_progress(self, val):
+        self.progress.emit(val)
 
 class CalculationDialog(QDialog):
     def __init__(self, parent=None):
@@ -32,6 +64,8 @@ class CalculationDialog(QDialog):
             QPushButton:hover {{ background-color: {THEME['button_hover']}; }}
         """)
         
+        self.target_mode = False
+        self.solved_velocity = None
         self.initUI()
 
     def initUI(self):
@@ -57,7 +91,7 @@ class CalculationDialog(QDialog):
         self.alt_input.setSuffix(" m")
         
         self.vel_input = QDoubleSpinBox()
-        self.vel_input.setRange(0, 5000)
+        self.vel_input.setRange(0, 50000000)
         self.vel_input.setValue(800)
         self.vel_input.setSuffix(" m/s")
         
@@ -132,12 +166,32 @@ class CalculationDialog(QDialog):
         proj_group.setLayout(proj_layout)
         layout.addWidget(proj_group)
         
+        # --- Progress Bar (Hidden by default) ---
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #555;
+                border-radius: 5px;
+                text-align: center;
+                background-color: #222;
+            }
+            QProgressBar::chunk {
+                background-color: #3498db;
+                width: 10px;
+            }
+        """)
+        self.progress_bar.hide()
+        layout.addWidget(self.progress_bar)
+
         # --- Buttons ---
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         
         self.calc_btn = QPushButton("Calculate")
-        self.calc_btn.clicked.connect(self.accept)
+        self.calc_btn.clicked.connect(self.on_calculate_clicked)
         self.calc_btn.setStyleSheet(f"background-color: {THEME['button_active']}; font-weight: bold;")
         
         self.cancel_btn = QPushButton("Cancel")
@@ -164,38 +218,27 @@ class CalculationDialog(QDialog):
 
         # Target Logic
         if target_lat is not None and target_lon is not None:
-            # Lock Heading
-            self.heading_input.setReadOnly(True)
-            self.heading_input.setStyleSheet("background-color: #222; color: #888;")
-            self.heading_input.setToolTip("Locked to Target Bearing")
+            self.target_mode = True
+            self.setWindowTitle("Ballistic Calculation - TARGET MODE")
+            self.calc_btn.setText("Auto-Solve Solution")
+            self.calc_btn.setStyleSheet(f"background-color: #2ecc71; color: white; font-weight: bold;")
             
-            # Calculate Distance for Velocity Estimation
-            try:
-                from gui.engine.coordinates import calculate_distance
-                dist_km = calculate_distance(lat, lon, target_lat, target_lon)
-                dist_m = dist_km * 1000.0
-                
-                # Vacuum approximation for 45 degree launch: Range = v^2 / g
-                # v = sqrt(Range * g)
-                import math
-                g = 9.81
-                v_est = math.sqrt(dist_m * g)
-                
-                # Apply a rough drag factor (e.g. 1.3x) since vacuum is too optimistic
-                v_est *= 1.3 
-                
-                self.vel_input.setValue(v_est)
-                self.climb_input.setValue(45.0)
-                
-                # Add a label or feedback
-                self.setWindowTitle("Ballistic Calculation - TARGET MODE")
-                
-            except Exception as e:
-                print(f"Error estimating velocity: {e}")
+            # Lock Inputs
+            for widget in [self.lat_input, self.lon_input, self.alt_input, 
+                           self.vel_input, self.heading_input, self.climb_input]:
+                widget.setReadOnly(True)
+                widget.setStyleSheet("background-color: #222; color: #888;")
         else:
-             self.heading_input.setReadOnly(False)
-             self.heading_input.setStyleSheet("")
+             self.target_mode = False
              self.setWindowTitle("Ballistic Calculation Settings")
+             self.calc_btn.setText("Calculate")
+             self.calc_btn.setStyleSheet(f"background-color: {THEME['button_active']}; font-weight: bold;")
+             
+             # Unlock Inputs
+             for widget in [self.lat_input, self.lon_input, self.alt_input, 
+                           self.vel_input, self.heading_input, self.climb_input]:
+                widget.setReadOnly(False)
+                widget.setStyleSheet(f"background-color: {THEME['input_bg'] if 'input_bg' in THEME else '#333'}; color: {THEME['text']}; border: 1px solid #555;")
 
     def update_heading_from_target(self):
         """Calculates heading if target is set."""
@@ -214,7 +257,51 @@ class CalculationDialog(QDialog):
             heading = calculate_bearing(s_lat, s_lon, t_lat, t_lon)
             self.heading_input.setValue(heading)
         except ImportError:
-            pass # Should not happen if coordinates.py is fixed
+            pass 
+
+    def on_calculate_clicked(self):
+        if self.target_mode:
+            self.run_auto_solver()
+        else:
+            self.accept()
+
+    def run_auto_solver(self):
+        """Runs the iterative solver in a background thread."""
+        data = self.get_data()
+        
+        # Disable UI
+        self.calc_btn.setEnabled(False)
+        self.progress_bar.setValue(0)
+        self.progress_bar.show()
+        
+        from services.ballistic_manager import BallisticManager
+        manager = BallisticManager()
+        
+        self.worker = SolverWorker(manager, data, self.target_lat_input.value(), self.target_lon_input.value())
+        self.worker.progress.connect(self.update_progress)
+        self.worker.finished.connect(self.solver_finished)
+        self.worker.error.connect(self.solver_error)
+        self.worker.start()
+
+    def update_progress(self, val):
+        self.progress_bar.setValue(val)
+
+    def solver_finished(self, vel, heading):
+        self.progress_bar.hide()
+        self.calc_btn.setEnabled(True)
+        
+        if vel and heading:
+            self.vel_input.setValue(vel)
+            self.heading_input.setValue(heading)
+            self.solved_velocity = vel
+            self.accept()
+        else:
+            QMessageBox.warning(self, "Solver Failed", "Could not find a firing solution for this target.")
+
+    def solver_error(self, msg):
+        self.progress_bar.hide()
+        self.calc_btn.setEnabled(True)
+        QMessageBox.critical(self, "Error", f"Solver error: {msg}")
 
     def get_data(self):
         """Returns a dictionary of all input values."""

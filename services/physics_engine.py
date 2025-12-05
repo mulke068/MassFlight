@@ -120,7 +120,7 @@ class PhysicsEngine:
                              velocity_vector: Tuple[float, float, float],
                              projectile: Projectile,
                              weather_data: Dict[str, Any] = None,
-                             dt: float = 0.1) -> Dict[str, Any]:
+                             dt: float = 0.01) -> Dict[str, Any]:
         """Integrates the trajectory over time.
 
         Args:
@@ -132,9 +132,6 @@ class PhysicsEngine:
             projectile: The projectile.
             weather_data: Weather info (temp, pressure).
             dt: Time step in seconds.
-
-        Returns:
-            Dictionary containing trajectory points and stats.
         """
         # Initial State
         x, y, z = 0.0, 0.0, start_alt  # Local coordinates relative to launch (flat earth approx for physics step, mapped later)
@@ -154,7 +151,7 @@ class PhysicsEngine:
                  pressure_hpa = float(weather_data["pressure"]["value"])
 
         # Loop
-        max_steps = 10000
+        max_steps = 100000
         step = 0
 
         while z >= 0 and step < max_steps:
@@ -174,7 +171,27 @@ class PhysicsEngine:
             fy = fd_y
             fz = fg_z + fd_z
 
-            # 3. Integrate (Euler for simplicity, could upgrade to RK4)
+            # Check for ground impact
+            if z < 0:
+                # Linear Interpolation to find exact impact time
+                # z_prev was >= 0, z is < 0
+                # fraction of time step: alpha = (0 - z_prev) / (z - z_prev)
+                # But we updated variables in place. We need previous values.
+                # Let's store prev values before update?
+                # Or just reverse interpolate:
+                # z_current is z, z_prev is z - vz * dt (approx)
+                
+                # Better: Store previous state at start of loop
+                pass 
+            
+            # ... actually, let's restructure the loop slightly to be cleaner
+            
+            # Store previous state
+            prev_x, prev_y, prev_z = x, y, z
+            prev_vx, prev_vy, prev_vz = vx, vy, vz
+            prev_t = t
+
+            # 3. Integrate (Euler)
             ax = fx / projectile.mass_kg
             ay = fy / projectile.mass_kg
             az = fz / projectile.mass_kg
@@ -187,6 +204,47 @@ class PhysicsEngine:
             y += vy * dt
             z += vz * dt
             t += dt
+
+            # Check for ground impact
+            if z < 0:
+                # Interpolate
+                # 0 = prev_z + (z - prev_z) * alpha
+                # alpha = -prev_z / (z - prev_z)
+                if abs(z - prev_z) > 1e-9:
+                    alpha = -prev_z / (z - prev_z)
+                else:
+                    alpha = 0
+                
+                # Interpolate position
+                x = prev_x + (x - prev_x) * alpha
+                y = prev_y + (y - prev_y) * alpha
+                z = 0.0 # Force to 0
+                t = prev_t + dt * alpha
+                
+                # Interpolate velocity (optional, but good for stats)
+                vx = prev_vx + (vx - prev_vx) * alpha
+                vy = prev_vy + (vy - prev_vy) * alpha
+                vz = prev_vz + (vz - prev_vz) * alpha
+                
+                # Final Point
+                d_lat = (y / 111111.0)
+                d_lon = (x / (111111.0 * math.cos(math.radians(start_lat))))
+                curr_lat = start_lat + d_lat
+                curr_lon = start_lon + d_lon
+                
+                points.append((curr_lat, curr_lon, z))
+                
+                # Add final telemetry point
+                telemetry.append({
+                    "time": round(t, 2),
+                    "altitude": round(z, 2),
+                    "velocity": round(math.sqrt(vx**2 + vy**2 + vz**2), 2),
+                    "distance": round(math.sqrt(x**2 + y**2), 2),
+                    "latitude": curr_lat,
+                    "longitude": curr_lon
+                })
+                
+                break # Stop simulation
 
             # 4. Store Data
             # Convert local (x=East, y=North) to Lat/Lon updates
@@ -206,7 +264,9 @@ class PhysicsEngine:
                     "time": round(t, 2),
                     "altitude": round(z, 2),
                     "velocity": round(math.sqrt(vx**2 + vy**2 + vz**2), 2),
-                    "distance": round(math.sqrt(x**2 + y**2), 2)
+                    "distance": round(math.sqrt(x**2 + y**2), 2),
+                    "latitude": curr_lat,
+                    "longitude": curr_lon
                 })
 
             step += 1

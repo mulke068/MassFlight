@@ -1,39 +1,9 @@
-
 from OpenGL import GL
 import logging
 
 from gui.engine import trajectory
 from gui.engine.trajectory import Trajectory
-from gui.engine.trajectory import SAMPLE_TRAJECTORY
-
-LOG = logging.getLogger(__name__)
-
-class Overlay:
-    def __init__(self):
-        self.pins = []
-        self.max_pins = 2
-        self.pin_threshold = 0.25
-
-        self.trajectory = Trajectory()
-    
-    ###################### PINS #############################
-    def add_pin(self, x,y,z):
-        if len(self.pins) + 1 <= self.max_pins:
-            self.pins.append((x,y,z))
-        LOG.debug(f'Pin added at {x}, {y}, {z}', exc_info=1)
-
-    def get_pins(self, index):
-        return self.pins[index]
-
-    def clear_pins(self):
-        self.pins = []
-        LOG.debug('Pins cleared', exc_info=1)
-from OpenGL import GL
-import logging
-
-from gui.engine import trajectory
-from gui.engine.trajectory import Trajectory
-from gui.engine.trajectory import SAMPLE_TRAJECTORY
+# from gui.engine.trajectory import SAMPLE_TRAJECTORY
 
 LOG = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from gui.engine.sphere import Sphere
 from gui.engine.texture_manager import TextureManager
 from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
 from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
-from gui.engine.trajectory import Trajectory, SAMPLE_TRAJECTORY
+from gui.engine.trajectory import Trajectory
 
 
 import logging
@@ -279,13 +279,96 @@ class SphereWidget(QOpenGLWidget):
                 self.animation_timer.start(16)  # ~60 FPS
                 LOG.info("Trajectory animation started ")
     
+
+
     def _update_trajectory_animation(self):
         """Update trajectory animation and redraw"""
-        if self.overlay.trajectory.update():
-            self.update()
-        else:
+        if not self.overlay.trajectory.update():
             self.animation_timer.stop()
             LOG.info("Trajectory animation complete")
+            return
+        
+        self.update()
+
+    def set_animation_speed(self, speed):
+        """Sets the number of steps processed per frame."""
+        self.overlay.trajectory.set_animation_speed(speed)
+        LOG.debug(f"Animation speed set to {speed}x")
+
+    # def fit_view_to_trajectory(self, points):
+    #     """Adjusts camera to fit all points in view with a true side profile."""
+    #     if not points:
+    #         return
+
+    #     # 1. Calculate Centroid (Midpoint)
+    #     sum_x = sum(p[0] for p in points)
+    #     sum_y = sum(p[1] for p in points)
+    #     sum_z = sum(p[2] for p in points)
+    #     count = len(points)
+        
+    #     center_x = sum_x / count
+    #     center_y = sum_y / count
+    #     center_z = sum_z / count
+        
+    #     # 2. Calculate Side Vector for Camera Position
+    #     # Start and End points
+    #     start = points[0]
+    #     end = points[-1]
+        
+    #     # Flight Vector (Start -> End)
+    #     fx = end[0] - start[0]
+    #     fy = end[1] - start[1]
+    #     fz = end[2] - start[2]
+        
+    #     # Up Vector (Normal at Midpoint)
+    #     # Just use the center vector itself (from origin to center)
+    #     ux, uy, uz = center_x, center_y, center_z
+        
+    #     # Cross Product: Side = Flight x Up
+    #     sx = fy * uz - fz * uy
+    #     sy = fz * ux - fx * uz
+    #     sz = fx * uy - fy * ux
+        
+    #     # Normalize Side Vector
+    #     import math
+    #     s_len = math.sqrt(sx*sx + sy*sy + sz*sz)
+    #     if s_len > 0:
+    #         sx /= s_len
+    #         sy /= s_len
+    #         sz /= s_len
+        
+    #     # Convert Side Vector to Lat/Lon for Camera Rotation
+    #     # We want the camera to look FROM this side vector TOWARDS the center.
+    #     # So we calculate the lat/lon of this vector.
+    #     from gui.engine.coordinates import xyz_to_lonlat
+    #     cam_lon, cam_lat = xyz_to_lonlat(sx, sy, sz)
+        
+    #     # Set Camera Rotation
+    #     # rotation_y (Pitch) = Latitude
+    #     # rotation_x (Yaw) = -Longitude - 90
+    #     self.camera.rotation_y = cam_lat
+    #     self.camera.rotation_x = -cam_lon - 90
+    #     self.camera.tilting_x = 0
+    #     self.camera.tilting_y = 0
+        
+    #     # 3. Calculate Zoom (Bounding Sphere Radius)
+    #     max_dist = 0
+    #     for p in points:
+    #         dist = math.sqrt((p[0]-center_x)**2 + (p[1]-center_y)**2 + (p[2]-center_z)**2)
+    #         if dist > max_dist:
+    #             max_dist = dist
+        
+    #     fov_rad = math.radians(DEFAULT_FOV)
+    #     required_dist = max_dist / math.tan(fov_rad / 2)
+    #     required_dist *= 2.0 # Generous padding
+        
+    #     # Clamp zoom
+    #     if required_dist < 15: required_dist = 15
+    #     if required_dist > 150: required_dist = 150
+        
+    #     self.camera.zoom_distance = -required_dist
+        
+    #     self.update()
 
     
     def _get_ray_from_cursor(self, x, y):
