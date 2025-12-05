@@ -1,12 +1,11 @@
-from PyQt5.QtWidgets import QPushButton, QWidget, QVBoxLayout, QLabel, QFrame, QHBoxLayout
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QPalette
+from PyQt6.QtWidgets import QPushButton, QWidget, QVBoxLayout, QLabel, QFrame, QHBoxLayout
+from PyQt6.QtCore import Qt, pyqtSignal
 from config.app_config import THEME
 
 class FloatingButton(QPushButton):
     def __init__(self, text, parent=None):
         super().__init__(text, parent)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setStyleSheet(f"""
             QPushButton {{
                 background-color: {THEME['button_active']};
@@ -65,7 +64,7 @@ class ResultsPanel(QFrame):
         
         close_btn = QPushButton("×")
         close_btn.setFixedSize(20, 20)
-        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         close_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
@@ -83,7 +82,7 @@ class ResultsPanel(QFrame):
         
         # Content
         self.content_label = QLabel()
-        self.content_label.setTextFormat(Qt.RichText)
+        self.content_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(self.content_label)
         
         self.setLayout(layout)

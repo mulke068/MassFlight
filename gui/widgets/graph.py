@@ -1,7 +1,5 @@
-
-
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from config.app_config import THEME
 

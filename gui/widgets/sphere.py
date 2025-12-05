@@ -1,10 +1,7 @@
-
 from OpenGL import GL
 from OpenGL.GLU import gluPerspective, gluUnProject
-from PyQt5.QtWidgets import QOpenGLWidget
-from PyQt5.QtCore import Qt, QTimer
-from OpenGL.GLU import *
-
+from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+from PyQt6.QtCore import Qt, QTimer
 
 from config.render_config import DEFAULT_FOV, FAR_CLIP, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, NEAR_CLIP, SPHERE_RADIUS
 from gui.engine.camera import Camera
@@ -23,7 +20,12 @@ class SphereWidget(QOpenGLWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+        # Request Compatibility Profile for legacy GL calls (glBegin, gluPerspective, etc.)
+        # fmt = QSurfaceFormat()
+        # fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CompatibilityProfile)
+        # self.setFormat(fmt)
         
         self.camera = Camera()
         self.texture_manager = TextureManager()
@@ -54,6 +56,21 @@ class SphereWidget(QOpenGLWidget):
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glClearColor(0,0,0,1)
 
+        # Debug OpenGL Context
+        version = GL.glGetString(GL.GL_VERSION)
+        vendor = GL.glGetString(GL.GL_VENDOR)
+        renderer = GL.glGetString(GL.GL_RENDERER)
+
+        LOG.info(f"OpenGL Context: {version.decode('utf-8')}")
+        LOG.info(f"OpenGL Vendor: {vendor.decode('utf-8')}")
+        LOG.info(f"OpenGL Renderer: {renderer.decode('utf-8')}")
+
+        try:
+            profile_mask = GL.glGetIntegerv(GL.GL_CONTEXT_PROFILE_MASK)
+            LOG.info(f"Context Profile Mask: {profile_mask} (Compat=2, Core=1)")
+        except Exception as e:
+            LOG.info(f"Could not get profile mask (likely legacy context): {e}")
+
         self.texture_manager.set_textures('earth.jpg', 'stars.jpg')
         self.texture = self.texture_manager.load_texture()
         # background sprite should be loaded using the dedicated loader
@@ -65,6 +82,8 @@ class SphereWidget(QOpenGLWidget):
                 self.sphere.texture = int(self.texture)
             except Exception:
                 self.sphere.texture = self.texture
+        else:
+             LOG.warning("Failed to load sphere texture, using fallback color.")
 
         # create the sphere mesh/display list now that a GL context exists
         self.sphere._create_mesh()
@@ -75,6 +94,14 @@ class SphereWidget(QOpenGLWidget):
         return super().resizeGL(w, h)
 
     def paintGL(self):
+        # Reset pixel storage modes that might interfere with QPainter or internal blits
+        GL.glPixelStorei(GL.GL_PACK_ALIGNMENT, 4)
+        GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 4)
+
+        err = GL.glGetError()
+        if err != GL.GL_NO_ERROR:
+             LOG.error(f"OpenGL Error Pre-Paint: {err}")
+
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         
         self._draw_background()
@@ -94,6 +121,9 @@ class SphereWidget(QOpenGLWidget):
         GL.glRotatef(cam_paras['rotation_x'], 0,1,0)
 
         # Sphere.draw will bind the sphere texture (if set) and call the display list
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        # Reset color to white for texturing
+        GL.glColor3f(1, 1, 1)
         self.sphere.draw()
 
         # ensure overlay renders after the sphere
@@ -101,12 +131,6 @@ class SphereWidget(QOpenGLWidget):
             self.overlay.draw()
         except Exception:
             pass
-
-        GL.glDisable(GL.GL_TEXTURE_2D)
-
-        self.overlay.draw()
-        
-        return super().paintGL()
 
     def _draw_background(self):
         """Draw background with stars texture"""
@@ -203,14 +227,14 @@ class SphereWidget(QOpenGLWidget):
         # store start position and button
         self.setFocus()
         try:
-            self._last_mouse_pos = event.pos()
+            self._last_mouse_pos = event.position()
             self._mouse_button = event.button()
         except Exception:
             self._last_mouse_pos = None
             self._mouse_button = None
 
         if event.button() == Qt.MouseButton.RightButton:#& self.point2 == 0:
-            self._add_pin_at_cursor(event.x(), event.y())
+            self._add_pin_at_cursor(event.position().x(), event.position().y())
 
         return super().mousePressEvent(event)
 
@@ -222,14 +246,11 @@ class SphereWidget(QOpenGLWidget):
     def mouseMoveEvent(self, event):
         # do nothing if no last position recorded
         if self._last_mouse_pos is None:
-            self._last_mouse_pos = event.pos()
+            self._last_mouse_pos = event.position()
             return super().mouseMoveEvent(event)
 
-        dx = event.x() - self._last_mouse_pos.x()
-        dy = event.y() - self._last_mouse_pos.y()
-
-        # import local so we don't add a top-level dependency in other contexts
-        from PyQt5.QtCore import Qt
+        dx = event.position().x() - self._last_mouse_pos.x()
+        dy = event.position().y() - self._last_mouse_pos.y()
 
         if self._mouse_button == Qt.MouseButton.LeftButton:
             # rotate camera on left-drag
@@ -238,7 +259,7 @@ class SphereWidget(QOpenGLWidget):
             # tilt/pan on right-drag
             self.camera.tilt(dx, dy)
 
-        self._last_mouse_pos = event.pos()
+        self._last_mouse_pos = event.position()
         self.update()
         return super().mouseMoveEvent(event)
 

@@ -1,6 +1,6 @@
-from PyQt5 import QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget, QMessageBox, QPushButton
+from PyQt6 import QtGui
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget, QMessageBox, QPushButton
 from config.app_config import APP_NAME, ICON_FILE, WINDOW_HEIGHT, WINDOW_WIDTH, THEME
 from .widgets import sphere as sphere
 from .widgets import graph as graph
@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
                 border-bottom: 2px solid #333;
             }
         """)
-        title.setAlignment(Qt.AlignCenter)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sidebar_layout.addWidget(title)
         sidebar_layout.addSpacing(30)
 
@@ -113,7 +113,7 @@ class MainWindow(QMainWindow):
                 border-top: 1px solid #333;
             }}
         """)
-        footer.setAlignment(Qt.AlignCenter)
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sidebar_layout.addWidget(footer)
 
         sidebar_frame.setLayout(sidebar_layout)
@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
         dialog.set_initial_values(lat=start_lat, lon=start_lon, heading=heading, 
                                   target_lat=target_lat, target_lon=target_lon)
 
-        if dialog.exec_():
+        if dialog.exec():
             data = dialog.get_data()
             LOG.info(f"Starting calculation with: {data}")
             
@@ -225,7 +225,7 @@ class MainWindow(QMainWindow):
             popup = QMessageBox(self)
             popup.setWindowTitle("Test")
             popup.setText("This is a test popup.")
-            popup.exec_()
+            popup.exec()
         
         return super().keyPressEvent(a0)
 

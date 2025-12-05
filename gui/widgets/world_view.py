@@ -1,8 +1,6 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel
+from PyQt6.QtCore import Qt, QTimer
 from .overlay_widgets import FloatingButton, ResultsPanel
-
-from PyQt5.QtCore import QTimer
 
 class WorldViewContainer(QWidget):
     """Container for SphereWidget and floating UI elements."""
@@ -22,7 +20,7 @@ class WorldViewContainer(QWidget):
         self.animate_btn.hide()
         self.reset_btn = FloatingButton("Reset", self)
         self.reset_btn.hide()
-        self.speed_slider = QSlider(Qt.Horizontal, self)
+        self.speed_slider = QSlider(Qt.Orientation.Horizontal, self)
         self.speed_slider.hide()
         self.speed_label = QLabel("Speed: 1x", self)
         self.speed_label.hide()

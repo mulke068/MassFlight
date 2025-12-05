@@ -1,10 +1,7 @@
-"""Dialog for ballistic calculation parameters."""
-
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QLineEdit, QPushButton, QFormLayout, QGroupBox, 
-                             QComboBox, QDoubleSpinBox, QProgressDialog, QApplication,
-                             QProgressBar, QMessageBox)
-from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
+                             QPushButton, QFormLayout, QGroupBox, 
+                             QDoubleSpinBox, QProgressBar, QMessageBox)
+from PyQt6.QtCore import QThread, pyqtSignal
 from config.app_config import THEME
 
 class SolverWorker(QThread):
