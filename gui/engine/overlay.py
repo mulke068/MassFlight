@@ -32,7 +32,6 @@ class Overlay:
         self.pins = []
         LOG.debug('Pins cleared', exc_info=1)
 
-
     def start_trajectory_animation(self):
         if self.pins:
             a = [(1,2,3)]
@@ -43,7 +42,6 @@ class Overlay:
             self.trajectory.set_full_trajectory(SAMPLE_TRAJECTORY)
             self.trajectory.start_animation()
         return True
-    
 
     def draw(self):
         GL.glDisable(GL.GL_TEXTURE_2D)

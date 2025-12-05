@@ -1,11 +1,12 @@
-#472-469
+"""
+SidebarButton module
+Sidebar button widget with active state styling.
+"""
 
 from PyQt5.QtWidgets import QPushButton
-import logging
-
 from config.app_config import THEME
-
-logger = logging.getLogger(__name__)
+import logging
+LOG = logging.getLogger(__name__)
 
 class SidebarButton(QPushButton):
     def __init__(self, text, parent=None):
@@ -15,11 +16,9 @@ class SidebarButton(QPushButton):
         self.active_color = THEME['button_active']
         self.text_color = THEME['text']
         self.left_border_color = THEME['left_border_color']
-
         self._is_active = False
         self.update_style()
         
-
     def update_style(self):
         if self._is_active:
             self.setStyleSheet(f"""

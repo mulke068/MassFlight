@@ -4,7 +4,7 @@ This module provides a Sphere class that creates and renders a textured sphere m
 """
 
 import OpenGL.GL as GL
-from config.render_config import SPHERE_RADIUS, SPHERE_RESULUTION
+from config.render_config import SPHERE_RADIUS, SPHERE_RESOLUTION
 from utils.utils import map_value
 from math import cos,sin,pi
 from typing import Tuple, List
@@ -15,7 +15,7 @@ class Sphere:
     def __init__(self, texture=None):
         self.texture = texture
         self.radius = SPHERE_RADIUS
-        self.resolution = SPHERE_RESULUTION
+        self.resolution = SPHERE_RESOLUTION
         self.display_list = None
     
     def _create_mesh(self):

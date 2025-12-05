@@ -1,9 +1,14 @@
-
+"""
+GraphWidget module
+A widget to display graphs using Matplotlib within a PyQt5 application.
+"""
 
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from config.app_config import THEME
+import logging
+LOG = logging.getLogger(__name__)
 
 class GraphWidget(QWidget):
     def __init__(self, graph_values=[(0,0)], graph_type='Altitude', parent=None):
@@ -14,35 +19,34 @@ class GraphWidget(QWidget):
         self.x_axis, self.y_axis = zip(*self.values)
         self.period = len(self.values)
         self._pan_start = None
-        
         self.draw()
 
     def initUI(self): 
-        ax = self.figure.add_subplot(111)
+        axis_subplot = self.figure.add_subplot(111)
         
         if "Altitude" in self.graph_type:
             color = THEME['content']
-            ax.set_ylabel('Meters (m)', color='white')
-            ax.set_xlabel('Time (s)', color='white')
+            axis_subplot.set_ylabel('Meters (m)', color='white')
+            axis_subplot.set_xlabel('Time (s)', color='white')
         elif "Latitude" in self.graph_type:
             color = THEME['content']
-            ax.set_ylabel('Meters (m)', color='white')
-            ax.set_xlabel('Time (s)', color='white')
+            axis_subplot.set_ylabel('Meters (m)', color='white')
+            axis_subplot.set_xlabel('Time (s)', color='white')
         elif "Velocity" in self.graph_type:
             color = THEME['content']
-            ax.set_ylabel('Velocity (m/s)', color='white')
-            ax.set_xlabel('Time (s)', color='white')
+            axis_subplot.set_ylabel('Velocity (m/s)', color='white')
+            axis_subplot.set_xlabel('Time (s)', color='white')
         else:
             color = THEME['content']
-            ax.set_xlabel('Time (s)', color='white')
-            ax.set_xlabel('Time (s)', color='white')
+            axis_subplot.set_xlabel('Time (s)', color='white')
+            axis_subplot.set_xlabel('Time (s)', color='white')
         
-        ax.plot(self.x_axis, self.y_axis, marker='o', linewidth=3, markersize=8, color='white')
-        ax.set_title(self.graph_type, color='white', fontsize=14, fontweight='bold')
-        ax.set_facecolor(THEME['background_accent'])
-        ax.tick_params(axis='x', colors='white')
-        ax.tick_params(axis='y', colors='white')
-        ax.grid(True, alpha=0.3)
+        axis_subplot.plot(self.x_axis, self.y_axis, marker='o', linewidth=3, markersize=8, color='white')
+        axis_subplot.set_title(self.graph_type, color='white', fontsize=14, fontweight='bold')
+        axis_subplot.set_facecolor(THEME['background_accent'])
+        axis_subplot.tick_params(axis='x', colors='white')
+        axis_subplot.tick_params(axis='y', colors='white')
+        axis_subplot.grid(True, alpha=0.3)
         self.figure.tight_layout()
 
 
@@ -55,32 +59,29 @@ class GraphWidget(QWidget):
         if event.inaxes is None:
             return
             
-        if event.button == 1:  # Left mouse button
+        if event.button == 1:
             self._pan_start = (event.xdata, event.ydata, event.inaxes)
-            self.canvas.setCursor(1)  # Closed hand cursor
+            self.canvas.setCursor(1)
     
     def _on_button_release(self, event):
-        if event.button == 1 and self._pan_start is not None:  # Left mouse button
+        if event.button == 1 and self._pan_start is not None:
             self._pan_start = None
-            self.canvas.setCursor(0)  # Arrow cursor
-
+            self.canvas.setCursor(0)
 
     def _on_mouse_move(self, event):
         if self._pan_start is None or event.inaxes is None:
             return
             
-        if event.button != 1:  # Only pan when left button is pressed
+        if event.button != 1:
             return
             
         start_x, start_y, ax = self._pan_start
         dx = start_x - event.xdata
         dy = start_y - event.ydata
-        
-        # Get current limits
+
         x_left, x_right = ax.get_xlim()
         y_bottom, y_top = ax.get_ylim()
-        
-        # Apply the pan
+
         ax.set_xlim(x_left + dx, x_right + dx)
         ax.set_ylim(y_bottom + dy, y_top + dy)
         
@@ -96,13 +97,11 @@ class GraphWidget(QWidget):
         if hasattr(event, 'button') and event.button in ('up', 'down'):
             scale = 1.0 / base_scale if event.button == 'up' else base_scale
         else:
-            # fallback using step direction
             step = getattr(event, 'step', None)
             if step is None:
                 step = 1 if getattr(event, 'step', 1) > 0 else -1
             scale = 1.0 / base_scale if step > 0 else base_scale
 
-        # get current limits
         x_left, x_right = ax.get_xlim()
         y_bottom, y_top = ax.get_ylim()
 
@@ -111,7 +110,6 @@ class GraphWidget(QWidget):
         if xdata is None or ydata is None:
             return
 
-        # compute new limits so zoom is centered on mouse
         new_width = (x_right - x_left) * scale
         new_height = (y_top - y_bottom) * scale
 

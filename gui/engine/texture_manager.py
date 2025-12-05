@@ -2,10 +2,10 @@
 Texture manager for loading and managing OpenGL textures.
 """
 
-from typing import Any
-import numpy as np
 from OpenGL import GL
+from typing import Any
 from PIL import Image
+import numpy as np
 import os
 import logging
 LOG = logging.getLogger(__name__)
@@ -44,21 +44,16 @@ class TextureManager:
                 return None
             
             image = Image.open(image_path)
-            # convert to rgb and byte array
-            # image = image.transpose(Image.FLIP_TOP_BOTTOM)
             image = image.transpose(Image.FLIP_TOP_BOTTOM)
             image_data = np.array(image.convert("RGB"), dtype=np.uint8)
             # ensure contiguous bytes layout and set upload alignment
             image_data = np.ascontiguousarray(image_data)
             
-            # Generate OpenGL texture
-            # generate and bind texture id
+            # Generate OpenGL texture and bind the ID
             texture_id = GL.glGenTextures(1)
-            # glGenTextures sometimes returns a numpy scalar/array; coerce to int
             try:
                 texture_id = int(texture_id)
             except Exception:
-                # if it's a sequence, grab first
                 try:
                     texture_id = int(texture_id[0])
                 except Exception:
@@ -72,7 +67,6 @@ class TextureManager:
             # Set sane texture parameters so NPOT textures and sampling behave
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_LINEAR)
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_LINEAR)
-            # GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT)
             GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE)
 
             # upload texture data to GPU
@@ -83,22 +77,3 @@ class TextureManager:
         except Exception as e:
             LOG.error(f"Error creating OpenGL texture from '{file_name}': {e}")
             return None
-
-#    def _get_image_from_file(self, file_name):
-        #try:
-            ## image_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..\..', 'assets/textures', file_name))
-            #base_dir = os.path.dirname(__file__)
-            #print(base_dir)
-            #dir = os.path.join(base_dir, '..', '..', self.assets_path, file_name)
-            #print(dir)
-            #image_path = os.path.abspath(dir)
-            #print(image_path)
-            
-            #if not os.path.exists(image_path):
-                #raise FileNotFoundError(f"Texture file '{file_name}' not found at path: {image_path}")
-            #image = pyglet.image.load(image_path)
-            #LOG.info(f"Texture '{file_name}' loaded successfully.")
-            #return image
-        #except Exception as e:
-            #LOG.error(f"Error loading '{file_name}' as texture: {e}")
-            #return None

@@ -1,19 +1,23 @@
+""""
+ SphereWidget module
+ Sphere widget for rendering a textured sphere with OpenGL,
+ camera controls, and overlay features.
+ """
 
-from OpenGL import GL
+import OpenGL.GL as GL
+from OpenGL.GLU import *
 from OpenGL.GLU import gluPerspective, gluUnProject
 from PyQt5.QtWidgets import QOpenGLWidget
 from PyQt5.QtCore import Qt, QTimer
-from OpenGL.GLU import *
-
-
-from config.render_config import DEFAULT_FOV, FAR_CLIP, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, NEAR_CLIP, SPHERE_RADIUS
 from gui.engine.camera import Camera
 from gui.engine.overlay import Overlay
 from gui.engine.sphere import Sphere
 from gui.engine.texture_manager import TextureManager
-from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
-from gui.engine.trajectory import Trajectory, SAMPLE_TRAJECTORY
-
+from gui.engine.trajectory import Trajectory
+from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat
+from config.render_config import (DEFAULT_FOV, FAR_CLIP,
+                                  MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH,
+                                  NEAR_CLIP, SPHERE_RADIUS)
 import logging
 LOG = logging.getLogger(__name__)
 
@@ -26,20 +30,15 @@ class SphereWidget(QOpenGLWidget):
         self.camera = Camera()
         self.texture_manager = TextureManager()
         self.trajectory = Trajectory()
-        
         self.sphere = Sphere()
         self.overlay = Overlay()
 
         self.texture = None
         self.bg_texture = None
-
-        # simple interaction state
         self._last_mouse_pos = None
         self._mouse_button = None
-        # track mouse movement even without button presses (optional)
         self.setMouseTracking(True)
-        
-        # Animation timer for trajectory
+
         self.animation_timer = QTimer()
         self.animation_timer.timeout.connect(self._update_trajectory_animation)
 
@@ -53,14 +52,12 @@ class SphereWidget(QOpenGLWidget):
         # background sprite should be loaded using the dedicated loader
         self.bg_texture = self.texture_manager.load_bg_sprite()
 
-        # ensure the sphere gets the numeric texture id (glGenTextures may return numpy types)
         if self.texture is not None:
             try:
                 self.sphere.texture = int(self.texture)
             except Exception:
                 self.sphere.texture = self.texture
 
-        # create the sphere mesh/display list now that a GL context exists
         self.sphere._create_mesh()
         return super().initializeGL()
 
@@ -72,12 +69,10 @@ class SphereWidget(QOpenGLWidget):
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         
         self._draw_background()
-
         GL.glMatrixMode(GL.GL_PROJECTION)
         GL.glLoadIdentity()
         aspect_ration = self.width() / self.height()
         gluPerspective(DEFAULT_FOV, aspect_ration, NEAR_CLIP, FAR_CLIP)
-        
         GL.glMatrixMode(GL.GL_MODELVIEW)
         GL.glLoadIdentity()
         
@@ -87,33 +82,24 @@ class SphereWidget(QOpenGLWidget):
         GL.glRotatef(cam_paras['rotation_y'], 1,0,0)
         GL.glRotatef(cam_paras['rotation_x'], 0,1,0)
 
-        # Sphere.draw will bind the sphere texture (if set) and call the display list
         self.sphere.draw()
-
-        # ensure overlay renders after the sphere
         try:
             self.overlay.draw()
         except Exception:
             pass
 
         GL.glDisable(GL.GL_TEXTURE_2D)
-
         self.overlay.draw()
         
         return super().paintGL()
 
-    def _draw_background(self):
-        """Draw background with stars texture"""
-        
+    def _draw_background(self):       
         GL.glDisable(GL.GL_DEPTH_TEST)
         GL.glMatrixMode(GL.GL_PROJECTION)
-        # GL.glPushMatrix()
         GL.glLoadIdentity()
-        # GL.glOrtho(-1, 1, -1, 1, -1, 1)
         GL.glOrtho(0, self.width(), 0, self.height(), -1, 1)
         
         GL.glMatrixMode(GL.GL_MODELVIEW)
-        # GL.glPushMatrix()
         GL.glLoadIdentity()
         
         GL.glEnable(GL.GL_TEXTURE_2D)
@@ -125,7 +111,6 @@ class SphereWidget(QOpenGLWidget):
                 bg_id = self.bg_texture
             GL.glBindTexture(GL.GL_TEXTURE_2D, bg_id)
         else:
-            # nothing to draw
             GL.glDisable(GL.GL_TEXTURE_2D)
             GL.glEnable(GL.GL_DEPTH_TEST)
             return
@@ -139,62 +124,11 @@ class SphereWidget(QOpenGLWidget):
         GL.glTexCoord2f(1.0, 1.0); GL.glVertex2f(w, h)
         GL.glTexCoord2f(0.0, 1.0); GL.glVertex2f(0.0, h)
         GL.glEnd()
-        
-        
-        # GL.glPopMatrix()
-        # GL.glMatrixMode(GL.GL_PROJECTION)
-        # GL.glPopMatrix()
-        # GL.glMatrixMode(GL.GL_MODELVIEW)
 
         GL.glDisable(GL.GL_TEXTURE_2D)
         GL.glEnable(GL.GL_DEPTH_TEST)
 
-    # def _draw_pins(self):
-    #     """Draw pins"""
-    #     if not self.pin1 and not self.pin2:
-    #         return
-        
-    #     GL.glPointSize(10)
-    #     # draw pins in red; pins stored as (lon, lat) for sphere-relative placement
-    #     GL.glColor3f(1.0, 0.0, 0.0)
-    #     GL.glBegin(GL.GL_POINTS)
-    #     for pin in self.pin1 + self.pin2:
-    #         # support both legacy (x,y,z) and new (lon,lat) storage
-    #         if isinstance(pin, (tuple, list)) and len(pin) == 2:
-    #             lon, lat = pin
-    #             x, y, z = lonlat_to_xyz(lon, lat, SPHERE_RADIUS)
-    #         elif isinstance(pin, (tuple, list)) and len(pin) == 3:
-    #             x, y, z = pin
-    #         else:
-    #             continue
-
-    #         GL.glVertex3f(x, y, z)
-    #     GL.glEnd()
-    
-    # def _draw_trajectory(self):
-    #     """Draw trajectory"""
-    #     points = self.trajectory.get_points()
-    #     if not points:
-    #         return
-        
-    #     # draw trajectory in white
-    #     GL.glColor3f(1.0, 1.0, 1.0)
-    #     GL.glLineWidth(5)
-    #     GL.glBegin(GL.GL_LINE_STRIP)
-    #     for point in points:
-    #         GL.glVertex3f(point[0], point[1], point[2])
-    #     GL.glEnd()
-    
-    # def _update_animation(self):
-    #     """Update animation"""
-    #     if self.trajectory.update():
-    #         self.update()
-    #     else:
-    #         self.animation_timer.stop()
-    
-    # ----- input handlers (mouse + wheel) -----
     def mousePressEvent(self, event):
-        # store start position and button
         self.setFocus()
         try:
             self._last_mouse_pos = event.pos()
@@ -203,7 +137,7 @@ class SphereWidget(QOpenGLWidget):
             self._last_mouse_pos = None
             self._mouse_button = None
 
-        if event.button() == Qt.MouseButton.RightButton:#& self.point2 == 0:
+        if event.button() == Qt.MouseButton.RightButton:
             self._add_pin_at_cursor(event.x(), event.y())
 
         return super().mousePressEvent(event)
@@ -214,7 +148,6 @@ class SphereWidget(QOpenGLWidget):
         return super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
-        # do nothing if no last position recorded
         if self._last_mouse_pos is None:
             self._last_mouse_pos = event.pos()
             return super().mouseMoveEvent(event)
@@ -222,14 +155,9 @@ class SphereWidget(QOpenGLWidget):
         dx = event.x() - self._last_mouse_pos.x()
         dy = event.y() - self._last_mouse_pos.y()
 
-        # import local so we don't add a top-level dependency in other contexts
-        from PyQt5.QtCore import Qt
-
         if self._mouse_button == Qt.MouseButton.LeftButton:
-            # rotate camera on left-drag
             self.camera.rotate(dx, dy)
         elif self._mouse_button == Qt.MouseButton.MiddleButton:
-            # tilt/pan on right-drag
             self.camera.tilt(dx, dy)
 
         self._last_mouse_pos = event.pos()
@@ -241,7 +169,6 @@ class SphereWidget(QOpenGLWidget):
         try:
             notches = event.angleDelta().y() / 120.0
         except Exception:
-            # fallback to legacy delta
             notches = event.delta() / 120.0 if hasattr(event, 'delta') else 0
 
         if notches:
@@ -258,12 +185,10 @@ class SphereWidget(QOpenGLWidget):
         elif event.key() == Qt.Key.Key_C:
             self.overlay.clear()
             self.update()
-        # else if x is pressed clear only one pin starting with pin2
         elif event.key() == Qt.Key.Key_X:
             self.overlay.remove_last_pin()
             self.update()
         elif event.key() == Qt.Key.Key_T:
-            # Toggle animation using existing points (pins or sample)
             if self.overlay.trajectory.is_animating:
                 self.overlay.trajectory.stop_animation()
                 self.animation_timer.stop()
@@ -274,13 +199,11 @@ class SphereWidget(QOpenGLWidget):
                 LOG.info("Trajectory animation started ")
     
     def _update_trajectory_animation(self):
-        """Update trajectory animation and redraw"""
         if self.overlay.trajectory.update():
             self.update()
         else:
             self.animation_timer.stop()
             LOG.info("Trajectory animation complete")
-
     
     def _get_ray_from_cursor(self, x, y):
         """Calculates a ray origin and direction from the cursor position.
@@ -352,20 +275,6 @@ class SphereWidget(QOpenGLWidget):
                 LOG.info(f"Pin at Lat,Lon: {lat},{lon}")
                 self.update()
 
-            # if intersection:
-            #     lon, lat = xyz_to_lonlat(*intersection)
-            #     if not self.pin1:
-            #         self.pin1.append((lon, lat))
-            #         LOG.info(f"1st Pin at Lat,Lon: {lat},{lon}")
-            #         self.update()
-            #     elif not self.pin2:
-            #         is_close = abs(self.pin1[0][0] - lon) < threshold and abs(self.pin1[0][1] - lat) < threshold
-            #         if not is_close:
-            #             self.pin2.append((lon, lat))
-            #             LOG.info(f"2nd Pin at Lat, Lon: {lat},{lon}")
-            #             self.update()
-            #         else:
-            #             LOG.info("Rejected: Pin2 is too close to Pin1.")
         except Exception as e:
             LOG.error(f"Error adding pin: {e}")
         finally:
