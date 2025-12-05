@@ -88,3 +88,90 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     
     return R * c
+
+# WGS84 Constants
+WGS84_A = 6378137.0  # Semi-major axis
+WGS84_F = 1 / 298.257223563  # Flattening
+WGS84_E2 = 2 * WGS84_F - WGS84_F * WGS84_F  # Square of eccentricity
+
+def lla_to_ecef(lat, lon, alt):
+    """
+    Convert Latitude, Longitude, Altitude to ECEF coordinates.
+    Args:
+        lat: Latitude in degrees
+        lon: Longitude in degrees
+        alt: Altitude in meters
+    Returns:
+        (x, y, z) in meters
+    """
+    lat_rad = math.radians(lat)
+    lon_rad = math.radians(lon)
+    
+    sin_lat = math.sin(lat_rad)
+    cos_lat = math.cos(lat_rad)
+    sin_lon = math.sin(lon_rad)
+    cos_lon = math.cos(lon_rad)
+    
+    N = WGS84_A / math.sqrt(1 - WGS84_E2 * sin_lat**2)
+    
+    x = (N + alt) * cos_lat * cos_lon
+    y = (N + alt) * cos_lat * sin_lon
+    z = (N * (1 - WGS84_E2) + alt) * sin_lat
+    
+    return x, y, z
+
+def ecef_to_lla(x, y, z):
+    """
+    Convert ECEF coordinates to Latitude, Longitude, Altitude.
+    Args:
+        x, y, z: ECEF coordinates in meters
+    Returns:
+        (lat, lon, alt) in degrees and meters
+    """
+    # Longitude is easy
+    lon = math.degrees(math.atan2(y, x))
+    
+    # Latitude and Altitude (Iterative method for high precision)
+    p = math.sqrt(x*x + y*y)
+    
+    # Initial guess (assuming alt=0)
+    lat_rad = math.atan2(z, p * (1 - WGS84_E2))
+    
+    # Iterate
+    for _ in range(5):
+        sin_lat = math.sin(lat_rad)
+        N = WGS84_A / math.sqrt(1 - WGS84_E2 * sin_lat**2)
+        alt = p / math.cos(lat_rad) - N
+        lat_rad = math.atan2(z, p * (1 - WGS84_E2 * (N / (N + alt))))
+        
+    lat = math.degrees(lat_rad)
+    
+    return lat, lon, alt
+
+def enu_to_ecef_vector(lat, lon, east, north, up):
+    """
+    Convert a vector from Local Tangent Plane (ENU) to ECEF.
+    Args:
+        lat, lon: Origin of the local tangent plane (degrees)
+        east, north, up: Vector components in ENU
+    Returns:
+        (vx, vy, vz) in ECEF
+    """
+    lat_rad = math.radians(lat)
+    lon_rad = math.radians(lon)
+    
+    sin_lat = math.sin(lat_rad)
+    cos_lat = math.cos(lat_rad)
+    sin_lon = math.sin(lon_rad)
+    cos_lon = math.cos(lon_rad)
+    
+    # Rotation Matrix (ENU to ECEF)
+    # | -sin_lon  -sin_lat*cos_lon   cos_lat*cos_lon |
+    # |  cos_lon  -sin_lat*sin_lon   cos_lat*sin_lon |
+    # |     0          cos_lat           sin_lat     |
+    
+    vx = -sin_lon * east - sin_lat * cos_lon * north + cos_lat * cos_lon * up
+    vy =  cos_lon * east - sin_lat * sin_lon * north + cos_lat * sin_lon * up
+    vz =                   cos_lat * north           + sin_lat * up
+    
+    return vx, vy, vz

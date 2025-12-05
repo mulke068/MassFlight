@@ -116,26 +116,25 @@ class PhysicsEngine:
 
         return (fx, fy, fz)
 
-    def integrate_trajectory(self, start_lat: float, start_lon: float, start_alt: float,
-                             velocity_vector: Tuple[float, float, float],
+    def integrate_trajectory(self, start_ecef: Tuple[float, float, float],
+                             velocity_ecef: Tuple[float, float, float],
                              projectile: Projectile,
                              weather_data: Dict[str, Any] = None,
-                             dt: float = 0.01) -> Dict[str, Any]:
-        """Integrates the trajectory over time.
+                             dt: float = 0.05) -> Dict[str, Any]:
+        """Integrates the trajectory over time using ECEF coordinates.
 
         Args:
-            start_lat: Starting latitude (deg).
-            start_lon: Starting longitude (deg).
-            start_alt: Starting altitude (m).
-            velocity_vector: Initial velocity (vx, vy, vz) in m/s (ECEF or local tangent?
-                             For simplicity, let's assume local tangent: x=East, y=North, z=Up).
+            start_ecef: Starting position (x, y, z) in meters (ECEF).
+            velocity_ecef: Initial velocity (vx, vy, vz) in m/s (ECEF).
             projectile: The projectile.
             weather_data: Weather info (temp, pressure).
             dt: Time step in seconds.
         """
-        # Initial State
-        x, y, z = 0.0, 0.0, start_alt  # Local coordinates relative to launch (flat earth approx for physics step, mapped later)
-        vx, vy, vz = velocity_vector
+        from gui.engine.coordinates import ecef_to_lla
+        
+        # Initial State (ECEF)
+        x, y, z = start_ecef
+        vx, vy, vz = velocity_ecef
         t = 0.0
 
         points = []
@@ -151,45 +150,49 @@ class PhysicsEngine:
                  pressure_hpa = float(weather_data["pressure"]["value"])
 
         # Loop
-        max_steps = 100000
+        max_steps = 500000 # Allow for long duration flights (e.g. 25000s at dt=0.05)
         step = 0
+        
+        # Initial LLA
+        curr_lat, curr_lon, curr_alt = ecef_to_lla(x, y, z)
 
-        while z >= 0 and step < max_steps:
+        while curr_alt >= 0 and step < max_steps:
             # 1. Get Environmental Data
-            density = self.calculate_air_density(z, temp_c, pressure_hpa)
-            gravity = get_gravity_at_location(start_lat, z) # m/s^2 down
+            density = self.calculate_air_density(curr_alt, temp_c, pressure_hpa)
+            g_mag = get_gravity_at_location(curr_lat, curr_alt) # m/s^2 scalar
 
             # 2. Calculate Forces
-            # Gravity acts down (-z)
-            fg_z = -gravity * projectile.mass_kg
+            # Gravity Vector (ECEF): Points towards Earth Center (0,0,0)
+            # Fg = m * g_vec
+            # g_vec = -normalize(pos) * g_mag
+            pos_mag = math.sqrt(x*x + y*y + z*z)
+            if pos_mag == 0:
+                gx, gy, gz = 0, 0, 0
+            else:
+                gx = -(x / pos_mag) * g_mag
+                gy = -(y / pos_mag) * g_mag
+                gz = -(z / pos_mag) * g_mag
+            
+            fg_x = gx * projectile.mass_kg
+            fg_y = gy * projectile.mass_kg
+            fg_z = gz * projectile.mass_kg
 
-            # Drag
+            # Drag Force (ECEF)
+            # Velocity is relative to Earth (ECEF is fixed to Earth)
+            # So wind would need to be added here if we had it.
+            # Assuming no wind, airspeed = groundspeed.
             fd_x, fd_y, fd_z = self.calculate_drag_force((vx, vy, vz), density, projectile)
 
             # Total Force
-            fx = fd_x
-            fy = fd_y
+            fx = fg_x + fd_x
+            fy = fg_y + fd_y
             fz = fg_z + fd_z
-
-            # Check for ground impact
-            if z < 0:
-                # Linear Interpolation to find exact impact time
-                # z_prev was >= 0, z is < 0
-                # fraction of time step: alpha = (0 - z_prev) / (z - z_prev)
-                # But we updated variables in place. We need previous values.
-                # Let's store prev values before update?
-                # Or just reverse interpolate:
-                # z_current is z, z_prev is z - vz * dt (approx)
-                
-                # Better: Store previous state at start of loop
-                pass 
-            
-            # ... actually, let's restructure the loop slightly to be cleaner
             
             # Store previous state
             prev_x, prev_y, prev_z = x, y, z
             prev_vx, prev_vy, prev_vz = vx, vy, vz
             prev_t = t
+            prev_alt = curr_alt
 
             # 3. Integrate (Euler)
             ax = fx / projectile.mass_kg
@@ -204,42 +207,40 @@ class PhysicsEngine:
             y += vy * dt
             z += vz * dt
             t += dt
+            
+            # Update LLA for next step (and check altitude)
+            curr_lat, curr_lon, curr_alt = ecef_to_lla(x, y, z)
 
             # Check for ground impact
-            if z < 0:
-                # Interpolate
-                # 0 = prev_z + (z - prev_z) * alpha
-                # alpha = -prev_z / (z - prev_z)
-                if abs(z - prev_z) > 1e-9:
-                    alpha = -prev_z / (z - prev_z)
+            if curr_alt < 0:
+                # Interpolate to find exact impact
+                # 0 = prev_alt + (curr_alt - prev_alt) * alpha
+                if abs(curr_alt - prev_alt) > 1e-9:
+                    alpha = -prev_alt / (curr_alt - prev_alt)
                 else:
                     alpha = 0
                 
-                # Interpolate position
+                # Interpolate ECEF position
                 x = prev_x + (x - prev_x) * alpha
                 y = prev_y + (y - prev_y) * alpha
-                z = 0.0 # Force to 0
+                z = prev_z + (z - prev_z) * alpha
                 t = prev_t + dt * alpha
                 
-                # Interpolate velocity (optional, but good for stats)
-                vx = prev_vx + (vx - prev_vx) * alpha
-                vy = prev_vy + (vy - prev_vy) * alpha
-                vz = prev_vz + (vz - prev_vz) * alpha
+                # Final LLA
+                curr_lat, curr_lon, curr_alt = ecef_to_lla(x, y, z)
+                curr_alt = 0.0 # Force to 0
                 
-                # Final Point
-                d_lat = (y / 111111.0)
-                d_lon = (x / (111111.0 * math.cos(math.radians(start_lat))))
-                curr_lat = start_lat + d_lat
-                curr_lon = start_lon + d_lon
-                
-                points.append((curr_lat, curr_lon, z))
+                points.append((curr_lat, curr_lon, curr_alt))
                 
                 # Add final telemetry point
+                v_mag = math.sqrt(vx**2 + vy**2 + vz**2)
+                dist_from_start = 0 # TODO: Calculate actual ground distance if needed
+                
                 telemetry.append({
                     "time": round(t, 2),
-                    "altitude": round(z, 2),
-                    "velocity": round(math.sqrt(vx**2 + vy**2 + vz**2), 2),
-                    "distance": round(math.sqrt(x**2 + y**2), 2),
+                    "altitude": round(curr_alt, 2),
+                    "velocity": round(v_mag, 2),
+                    "distance": 0, # Placeholder, calculated in Manager
                     "latitude": curr_lat,
                     "longitude": curr_lon
                 })
@@ -247,24 +248,15 @@ class PhysicsEngine:
                 break # Stop simulation
 
             # 4. Store Data
-            # Convert local (x=East, y=North) to Lat/Lon updates
-            # 1 deg lat ~ 111km, 1 deg lon ~ 111km * cos(lat)
-            # This is a small angle approximation valid for short flights.
-            # For ICBMs, we'd need full ECEF.
-            d_lat = (y / 111111.0)
-            d_lon = (x / (111111.0 * math.cos(math.radians(start_lat))))
-
-            curr_lat = start_lat + d_lat
-            curr_lon = start_lon + d_lon
-
-            points.append((curr_lat, curr_lon, z))
+            points.append((curr_lat, curr_lon, curr_alt))
             
             if step % 10 == 0: # Downsample telemetry
+                v_mag = math.sqrt(vx**2 + vy**2 + vz**2)
                 telemetry.append({
                     "time": round(t, 2),
-                    "altitude": round(z, 2),
-                    "velocity": round(math.sqrt(vx**2 + vy**2 + vz**2), 2),
-                    "distance": round(math.sqrt(x**2 + y**2), 2),
+                    "altitude": round(curr_alt, 2),
+                    "velocity": round(v_mag, 2),
+                    "distance": 0, # Placeholder
                     "latitude": curr_lat,
                     "longitude": curr_lon
                 })
@@ -277,7 +269,7 @@ class PhysicsEngine:
             "summary": {
                 "flight_time": round(t, 2),
                 "max_altitude": round(max(p[2] for p in points) if points else 0, 2),
-                "total_distance": round(math.sqrt(x**2 + y**2), 2),
+                "total_distance": 0, # Calculated in Manager
                 "impact_velocity": round(math.sqrt(vx**2 + vy**2 + vz**2), 2)
             }
         }

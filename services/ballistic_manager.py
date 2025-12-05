@@ -57,6 +57,8 @@ class BallisticManager:
             Dictionary containing visualization data and telemetry.
         """
         LOG.debug(f"Calculating trajectory from {lat}, {lon} at {velocity} m/s")
+        
+        from gui.engine.coordinates import lla_to_ecef, enu_to_ecef_vector, calculate_distance
 
         # 1. Setup Projectile
         if projectile_params is None:
@@ -69,21 +71,19 @@ class BallisticManager:
             drag_model=DragModel.G1
         )
 
-        # 2. Setup Initial Velocity Vector
-        # Convert Heading/Climb to Cartesian Velocity components (Local Tangent Plane)
-        # x = East, y = North, z = Up
-        # Heading 0 = North (y+), 90 = East (x+)
-        # This means:
-        # vx = v * cos(climb) * sin(heading)
-        # vy = v * cos(climb) * cos(heading)
-        # vz = v * sin(climb)
+        # 2. Setup Initial State (ECEF)
+        # Position
+        start_ecef = lla_to_ecef(lat, lon, altitude)
         
-        rad_heading = heading * (math.pi / 180)
-        rad_climb = climb_angle * (math.pi / 180)
+        # Velocity (ENU -> ECEF)
+        rad_heading = math.radians(heading)
+        rad_climb = math.radians(climb_angle)
         
-        vx = velocity * math.cos(rad_climb) * math.sin(rad_heading)
-        vy = velocity * math.cos(rad_climb) * math.cos(rad_heading)
-        vz = velocity * math.sin(rad_climb)
+        v_east = velocity * math.cos(rad_climb) * math.sin(rad_heading)
+        v_north = velocity * math.cos(rad_climb) * math.cos(rad_heading)
+        v_up = velocity * math.sin(rad_climb)
+        
+        velocity_ecef = enu_to_ecef_vector(lat, lon, v_east, v_north, v_up)
 
         # 3. Get Weather Data (Optional)
         # We try to get weather for the launch location
@@ -103,10 +103,8 @@ class BallisticManager:
 
         # 4. Run Physics Integration
         simulation_result = self.physics_engine.integrate_trajectory(
-            start_lat=lat,
-            start_lon=lon,
-            start_alt=altitude,
-            velocity_vector=(vx, vy, vz),
+            start_ecef=start_ecef,
+            velocity_ecef=velocity_ecef,
             projectile=projectile,
             weather_data=weather_data
         )
@@ -125,17 +123,28 @@ class BallisticManager:
         # From: [{'time': 0, 'alt': 0}, ...]
         # To: {'time': [0, ...], 'alt': [0, ...]}
         raw_telemetry = simulation_result["telemetry"]
+        
+        # Calculate Ground Distance for Telemetry
+        # We'll calculate cumulative Great Circle distance
+        distances = [0.0]
+        for i in range(1, len(raw_telemetry)):
+            prev = raw_telemetry[i-1]
+            curr = raw_telemetry[i]
+            step_dist = calculate_distance(prev["latitude"], prev["longitude"], 
+                                           curr["latitude"], curr["longitude"]) * 1000.0
+            distances.append(distances[-1] + step_dist)
+            
         formatted_telemetry = {
             "time": [d["time"] for d in raw_telemetry],
             "altitude": [d["altitude"] for d in raw_telemetry],
             "velocity": [d["velocity"] for d in raw_telemetry],
-            "distance": [d["distance"] for d in raw_telemetry],
+            "distance": distances,
             "latitude": [p[0] for p in simulation_result["points"][::10]],
             "longitude": [p[1] for p in simulation_result["points"][::10]]
         }
-        # Note: Points are not downsampled in physics engine return, but telemetry is.
-        # We need to be careful. Physics engine returns points for every step, telemetry every 10.
-        # Let's just trust the telemetry dict keys.
+        
+        # Update Summary with Total Distance
+        simulation_result["summary"]["total_distance"] = distances[-1]
 
         return {
             "visualization_points": viz_points,
@@ -263,10 +272,16 @@ class BallisticManager:
             # V0
             res0 = self.calculate_trajectory(lat, lon, alt, v0, heading, climb, params)
             # Use Great Circle Distance to match target_dist metric
-            # dist0 = res0["summary"]["distance"]
             i_lat0 = res0["telemetry"]["latitude"][-1]
             i_lon0 = res0["telemetry"]["longitude"][-1]
-            dist0 = calculate_distance(lat, lon, i_lat0, i_lon0) * 1000.0
+            i_alt0 = res0["telemetry"]["altitude"][-1]
+            
+            # Check if we timed out (didn't land)
+            if i_alt0 > 1000:
+                # Overshoot (Orbital/Escape)
+                dist0 = 1e9 # Massive distance
+            else:
+                dist0 = calculate_distance(lat, lon, i_lat0, i_lon0) * 1000.0
             
             err0 = dist0 - target_dist
             
@@ -274,10 +289,14 @@ class BallisticManager:
             
             # V1
             res1 = self.calculate_trajectory(lat, lon, alt, v1, heading, climb, params)
-            # dist1 = res1["summary"]["distance"]
             i_lat1 = res1["telemetry"]["latitude"][-1]
             i_lon1 = res1["telemetry"]["longitude"][-1]
-            dist1 = calculate_distance(lat, lon, i_lat1, i_lon1) * 1000.0
+            i_alt1 = res1["telemetry"]["altitude"][-1]
+            
+            if i_alt1 > 1000:
+                 dist1 = 1e9
+            else:
+                 dist1 = calculate_distance(lat, lon, i_lat1, i_lon1) * 1000.0
             
             err1 = dist1 - target_dist
             

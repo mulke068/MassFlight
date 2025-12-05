@@ -32,8 +32,14 @@ def get_gravity_at_location(lat , altitude_meters= 0) -> float:
     # calculate graivity on surface of the ellipsoid
     g_surface = g_equator * (1 + k * sin_sq_lat) / sqrt(1 - e2 * sin_sq_lat)
     
-    # apply air correction
-    # 3.086e-6 m/s^2 per meter aprx
-    air_correction = 3.086e-6 * altitude_meters
+    # Inverse Square Law for Altitude
+    # g(h) = g_surface * (R / (R + h))^2
+    # Earth Mean Radius approx 6371km
+    R = 6371000.0
+    
+    if altitude_meters > 0:
+        g = g_surface * (R / (R + altitude_meters)) ** 2
+    else:
+        g = g_surface
 
-    return g_surface - air_correction
+    return g
