@@ -52,7 +52,7 @@ def test_solver():
         print(f"Simulated Distance: {dist:.2f} m")
         
         # Calculate expected distance
-        from gui.engine.coordinates import calculate_distance
+        from utils.coordinates import calculate_distance
         expected_km = calculate_distance(start_lat, start_lon, target_lat, target_lon)
         expected_m = expected_km * 1000.0
         print(f"Target Distance: {expected_m:.2f} m")

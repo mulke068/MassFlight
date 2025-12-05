@@ -35,16 +35,12 @@ class Overlay:
     ###################### TRAJECTORY #############################
     def start_trajectory_animation(self):
         """Starts the trajectory animation."""
-        # If we have a full trajectory set (from calculation), use it.
         if self.trajectory.full_trajectory:
             self.trajectory.start_animation()
         # Fallback: If no trajectory but we have pins, maybe we should have calculated? 
         # For now, just do nothing or use sample if explicitly requested, but better to rely on calculation.
         elif not self.trajectory.full_trajectory:
-            # Only use sample if we really have nothing
             LOG.warning("No trajectory data available to animate.")
-            # self.trajectory.set_full_trajectory(SAMPLE_TRAJECTORY)
-            # self.trajectory.start_animation()
         return True
     
     def set_trajectory_data(self, points):
@@ -52,7 +48,7 @@ class Overlay:
         self.trajectory.set_full_trajectory(points)
         LOG.info(f"Trajectory data set with {len(points)} points")
     
-    
+    ######################### DRAWING #####################
     def draw(self):
         GL.glEnable(GL.GL_BLEND)
         GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)

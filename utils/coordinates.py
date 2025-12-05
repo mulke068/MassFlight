@@ -1,6 +1,7 @@
 """Coordinate system conversions for sphere mapping"""
 import math
-from math import asin, atan2, cos, sin, sqrt, pi
+from math import asin, atan2, cos, sin, sqrt, pi, degrees
+from config.core_config import EARTH_RADIUS_KM
 
 
 def xyz_to_lonlat(x, y, z):
@@ -61,30 +62,36 @@ def ray_sphere_intersection(ray_origin, ray_dir, sphere_center, sphere_radius):
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
     """Calculates the initial bearing from point 1 to point 2."""
-    lat1_rad = math.radians(lat1)
-    lat2_rad = math.radians(lat2)
-    d_lon_rad = math.radians(lon2 - lon1)
+    lat1_rad = lat1 * (pi / 180)
+    lat2_rad = lat2 * (pi / 180)
+    d_lon_rad = (lon2 - lon1) * (pi / 180)
 
-    y = math.sin(d_lon_rad) * math.cos(lat2_rad)
-    x = math.cos(lat1_rad) * math.sin(lat2_rad) - \
-        math.sin(lat1_rad) * math.cos(lat2_rad) * math.cos(d_lon_rad)
+    y = sin(d_lon_rad) * cos(lat2_rad)
+    x = cos(lat1_rad) * sin(lat2_rad) - sin(lat1_rad) * cos(lat2_rad) * cos(d_lon_rad)
     
-    bearing_rad = math.atan2(y, x)
-    bearing_deg = math.degrees(bearing_rad)
+    bearing_rad = atan2(y, x)
+    bearing_deg = degrees(bearing_rad)
     
     return (bearing_deg + 360) % 360
 
 def calculate_distance(lat1, lon1, lat2, lon2):
-    """Calculates the great-circle distance between two points in km."""
-    R = 6371.0 # Earth radius in km
+    """Calculates the great-circle distance between two points in km.""" 
+
+    # https://en.wikipedia.org/wiki/Radian
+    # https://en.wikipedia.org/wiki/Haversine_formula
+        
+    # d = r * theta
+    R = EARTH_RADIUS_KM
+
+    # degree to radian
+    lat1, lon1, lat2, lon2 = [x * (pi / 180) for x in [lat1, lon1, lat2, lon2]]
+
+    # haversine formula
+    delta_phi = lat2 - lat1
+    delta_lambda = lon2 - lon1
+
+    haversine = (1 - cos(delta_phi) + cos(lat1) * cos(lat2) * (1 - cos(delta_lambda))) / 2
+
+    theta = 2 * asin(sqrt(haversine))
     
-    d_lat = math.radians(lat2 - lat1)
-    d_lon = math.radians(lon2 - lon1)
-    
-    a = math.sin(d_lat / 2)**2 + \
-        math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * \
-        math.sin(d_lon / 2)**2
-    
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
-    return R * c
+    return R * theta

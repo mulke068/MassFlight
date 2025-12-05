@@ -7,15 +7,15 @@ accounting for gravity and aerodynamic drag.
 import math
 from typing import List, Tuple, Dict, Any
 
+from config.core_config import (
+    STD_TEMP_K,
+    STD_PRESSURE_PA,
+    LAPSE_RATE,
+    GAS_CONSTANT,
+    GRAVITY_STD
+)
 from services.projectile import Projectile, DragModel
 from services.gravity import get_gravity_at_location
-
-# Standard atmospheric constants (ISA)
-STD_TEMP_K = 288.15
-STD_PRESSURE_PA = 101325.0
-LAPSE_RATE = 0.0065  # K/m
-GAS_CONSTANT = 287.05
-GRAVITY_STD = 9.80665
 
 
 class PhysicsEngine:

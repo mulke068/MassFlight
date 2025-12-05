@@ -253,7 +253,7 @@ class CalculationDialog(QDialog):
         s_lon = self.lon_input.value()
         
         try:
-            from gui.engine.coordinates import calculate_bearing
+            from utils.coordinates import calculate_bearing
             heading = calculate_bearing(s_lat, s_lon, t_lat, t_lon)
             self.heading_input.setValue(heading)
         except ImportError:

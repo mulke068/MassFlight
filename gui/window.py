@@ -8,6 +8,7 @@ from .widgets import sidebar as sidebar
 from .widgets.calculation_dialog import CalculationDialog
 from .widgets.world_view import WorldViewContainer
 from services.ballistic_manager import BallisticManager
+from utils.coordinates import xyz_to_lonlat, calculate_bearing
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -191,31 +192,7 @@ class MainWindow(QMainWindow):
         dialog = CalculationDialog(self)
         
         # Pre-fill with Pin Data
-        # Access sphere_widget via the container now
-        sphere_widget = self.sphere_widget
-        pins = sphere_widget.overlay.pins
-        LOG.info(f"Found {len(pins)} pins: {pins}")
-        
-        start_lat, start_lon, heading = None, None, None
-        target_lat, target_lon = None, None
-        
-        if len(pins) >= 1:
-            # Pin 1: Start Location
-            from gui.engine.coordinates import xyz_to_lonlat
-            p1 = pins[0]
-            start_lon, start_lat = xyz_to_lonlat(p1[0], p1[1], p1[2])
-            LOG.info(f"Pin 1 (Start): Lat={start_lat}, Lon={start_lon}")
-            
-            if len(pins) >= 2:
-                # Pin 2: Target - Calculate Heading
-                p2 = pins[1]
-                target_lon, target_lat = xyz_to_lonlat(p2[0], p2[1], p2[2])
-                LOG.info(f"Pin 2 (Target): Lat={target_lat}, Lon={target_lon}")
-                
-                # Calculate initial bearing
-                from gui.engine.coordinates import calculate_bearing
-                heading = calculate_bearing(start_lat, start_lon, target_lat, target_lon)
-                LOG.info(f"Calculated Heading: {heading}")
+        start_lat, start_lon, heading, target_lat, target_lon = self._get_values_from_pins()
         
         dialog.set_initial_values(lat=start_lat, lon=start_lon, heading=heading, 
                                   target_lat=target_lat, target_lon=target_lon)
@@ -235,39 +212,7 @@ class MainWindow(QMainWindow):
                     projectile_params=data['projectile']
                 )
                 
-                # Update Sphere View
-                viz_points = result['visualization_points']
-                if viz_points:
-                    sphere_widget.overlay.set_trajectory_data(viz_points)
-                    
-                    # Auto-Fit Camera
-                    # sphere_widget.fit_view_to_trajectory(viz_points)
-                    
-                    # Show Results Panel & Buttons
-                    self.world_view_container.results_panel.update_results(result['summary'], data)
-                    self.world_view_container.animate_btn.show()
-                    self.world_view_container.reset_btn.show()
-                    self.world_view_container.speed_label.show()
-                    self.world_view_container.speed_slider.show()
-                    
-                    # Force layout update to position buttons
-                    self.world_view_container.update_layout()
-                    
-                    # Update Graphs
-                    telemetry = result['telemetry']
-                    times = telemetry.get('time', [])
-                    
-                    # Altitude Graph (Page 1)
-                    alts = telemetry.get('altitude', [])
-                    self.pages[1].update_data(list(zip(times, alts)))
-                    
-                    # Latitude Graph (Page 2)
-                    lats = telemetry.get('latitude', [])
-                    self.pages[2].update_data(list(zip(times, lats)))
-                    
-                    # Velocity Graph (Page 3)
-                    vels = telemetry.get('velocity', [])
-                    self.pages[3].update_data(list(zip(times, vels)))
+                self._update_visualization(result, data)
 
             except Exception as e:
                 LOG.error(f"Calculation failed: {e}")
@@ -288,3 +233,52 @@ class MainWindow(QMainWindow):
         LOG.info("Application closing")
         a0.accept()
         return super().closeEvent(a0)
+
+    def _get_values_from_pins(self):
+        """Extracts initial values from map pins."""
+        sphere_widget = self.sphere_widget
+        pins = sphere_widget.overlay.pins
+        LOG.info(f"Found {len(pins)} pins: {pins}")
+        
+        start_lat, start_lon, heading = None, None, None
+        target_lat, target_lon = None, None
+        
+        if len(pins) >= 1:
+            p1 = pins[0]
+            start_lon, start_lat = xyz_to_lonlat(p1[0], p1[1], p1[2])
+            LOG.info(f"Pin 1 (Start): Lat={start_lat}, Lon={start_lon}")
+            
+            if len(pins) >= 2:
+                p2 = pins[1]
+                target_lon, target_lat = xyz_to_lonlat(p2[0], p2[1], p2[2])
+                LOG.info(f"Pin 2 (Target): Lat={target_lat}, Lon={target_lon}")
+                
+                heading = calculate_bearing(start_lat, start_lon, target_lat, target_lon)
+                LOG.info(f"Calculated Heading: {heading}")
+                
+        return start_lat, start_lon, heading, target_lat, target_lon
+
+    def _update_visualization(self, result, data):
+        """Updates the visualization with simulation results."""
+        # Update Sphere View
+        viz_points = result['visualization_points']
+        if viz_points:
+            self.sphere_widget.overlay.set_trajectory_data(viz_points)
+            
+            # Show Results Panel & Buttons
+            self.world_view_container.results_panel.update_results(result['summary'], data)
+            self.world_view_container.animate_btn.show()
+            self.world_view_container.reset_btn.show()
+            self.world_view_container.speed_label.show()
+            self.world_view_container.speed_slider.show()
+            
+            # Force layout update
+            self.world_view_container.update_layout()
+            
+            # Update Graphs
+            telemetry = result['telemetry']
+            times = telemetry.get('time', [])
+            
+            self.pages[1].update_data(list(zip(times, telemetry.get('altitude', []))))
+            self.pages[2].update_data(list(zip(times, telemetry.get('latitude', []))))
+            self.pages[3].update_data(list(zip(times, telemetry.get('velocity', []))))

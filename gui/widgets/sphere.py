@@ -11,8 +11,8 @@ from gui.engine.camera import Camera
 from gui.engine.overlay import Overlay
 from gui.engine.sphere import Sphere
 from gui.engine.texture_manager import TextureManager
-from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
-from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
+from utils.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
+from utils.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
 from gui.engine.trajectory import Trajectory
 
 

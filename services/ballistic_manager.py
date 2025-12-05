@@ -4,23 +4,29 @@ This module acts as the orchestrator for ballistic calculations, connecting
 user inputs, weather data, and the physics engine.
 """
 
-import sys
-import os
-
-# Add parent directory to path to find config
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
-
 import math
 import logging
+import os
 from typing import Dict, Any, List, Tuple
 
+from config.render_config import SPHERE_RADIUS
+from config.core_config import (
+    EARTH_RADIUS_M,
+    MAX_VELOCITY,
+    HEADING_TOLERANCE_DEG,
+    RANGE_TOLERANCE_M,
+    MAX_SOLVER_ITERATIONS_HEADING,
+    MAX_SOLVER_ITERATIONS_VELOCITY
+)
+from utils.coordinates import (
+    xyz_to_lonlat,
+    lonlat_to_xyz,
+    calculate_distance,
+    calculate_bearing
+)
 from services.projectile import Projectile, DragModel
 from services.physics_engine import PhysicsEngine
 from services.weather_manager import WeatherManager
-from gui.engine.coordinates import xyz_to_lonlat, lonlat_to_xyz
-from config.render_config import SPHERE_RADIUS
 
 LOG = logging.getLogger(__name__)
 
@@ -113,7 +119,6 @@ class BallisticManager:
 
         # 5. Format Output for Visualization
         viz_points = []
-        EARTH_RADIUS_M = 6371000.0
         
         for p in simulation_result["points"]:
             p_lat, p_lon, p_alt = p
@@ -164,8 +169,6 @@ class BallisticManager:
         Returns:
             Tuple (velocity, heading) or (None, None) if unreachable.
         """
-        from gui.engine.coordinates import calculate_distance, calculate_bearing
-        
         # Target Data
         target_dist_km = calculate_distance(lat, lon, target_lat, target_lon)
         target_dist_m = target_dist_km * 1000.0
@@ -189,9 +192,8 @@ class BallisticManager:
         # Outer Loop: Adjust Heading (to fix cross-track error/drift)
         # Inner Loop: Adjust Velocity (to fix range error)
         
-        max_heading_iter = 50
-        # heading_tolerance = 0.05 # degrees
-        heading_tolerance = 0.001 # degrees (High Precision)
+        max_heading_iter = MAX_SOLVER_ITERATIONS_HEADING
+        heading_tolerance = HEADING_TOLERANCE_DEG
         
         for h_iter in range(max_heading_iter):
             
@@ -252,14 +254,14 @@ class BallisticManager:
         return v_solved, heading_guess
 
     def _solve_velocity_for_heading(self, lat, lon, alt, heading, climb, params, target_dist, v_guess):
-        from gui.engine.coordinates import calculate_distance
         # Secant method for velocity
         v0 = v_guess
         v1 = v0 * 1.05
         
-        MAX_VELOCITY = 50000.0 # Safety cap
         
-        for i in range(15):
+        # MAX_VELOCITY imported from config
+        
+        for i in range(MAX_SOLVER_ITERATIONS_VELOCITY):
             # V0
             res0 = self.calculate_trajectory(lat, lon, alt, v0, heading, climb, params)
             # Use Great Circle Distance to match target_dist metric
@@ -270,7 +272,7 @@ class BallisticManager:
             
             err0 = dist0 - target_dist
             
-            if abs(err0) < 50.0: return v0
+            if abs(err0) < RANGE_TOLERANCE_M: return v0
             
             # V1
             res1 = self.calculate_trajectory(lat, lon, alt, v1, heading, climb, params)
@@ -281,7 +283,7 @@ class BallisticManager:
             
             err1 = dist1 - target_dist
             
-            if abs(err1) < 50.0: return v1
+            if abs(err1) < RANGE_TOLERANCE_M: return v1
             
             diff = err1 - err0
             # if abs(diff) < 1e-9

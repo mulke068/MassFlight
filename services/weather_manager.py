@@ -9,13 +9,14 @@ sys.path.append(parent_dir)
 
 
 import json
-from math import cos, pi, asin, sqrt
+from math import cos, pi, asin, sqrt, atan2
 import os
 import requests
 import re
 import logging
 
 from config.others_config import CACHE_FILE, MAX_FETCH_ATTEMPTS
+from utils.coordinates import calculate_distance
 
 LOG = logging.getLogger(__name__)
 
@@ -240,7 +241,7 @@ class WeatherManager:
             self.last_target_lon = target_lon
 
             for station in self.stations:
-                distance = self._haversine_distance(target_lat, target_lon, station[0], station[1])
+                distance = calculate_distance(target_lat, target_lon, station[0], station[1])
                 # if distance < nearest_station:
                 #     nearest_station = distance
                 #     station_code = station[2]
@@ -279,26 +280,7 @@ class WeatherManager:
         else:
             return degrees + (minutes/60)
 
-    def _haversine_distance(self, lat1, lon1, lat2, lon2) -> float:
-        # https://en.wikipedia.org/wiki/Radian
-        # https://en.wikipedia.org/wiki/Haversine_formula
-        
-        # d = r * theta
-        
-        r = 6371 # Earth radius in km
-        
-        # degree to radian
-        lat1, lon1, lat2, lon2 = [x * (pi / 180) for x in [lat1, lon1, lat2, lon2]]
 
-        # haversine formula
-        delta_phi = lat2 - lat1
-        delta_lambda = lon2 - lon1
-
-        haversine = (1 - cos(delta_phi) + cos(lat1) * cos(lat2) * (1 - cos(delta_lambda))) / 2
-
-        theta = 2 * asin(sqrt(haversine))
-        
-        return r * theta
 
 
 
@@ -329,8 +311,18 @@ if __name__ == "__main__":
     # delay(1000)
     # data = wm.get(-34.776794, -58.385598) # Buenos Aires | Argentinien
     # print(data)
-    # res = wm._haversine_distance(38.898,-77.037,49.818,6.134)
+
+    res = calculate_distance(49.818,6.134,38.898,-77.037)
+    print(res)
+    # res = calculate_distance(90,0,-90,0)
     # print(res)
+    # res = calculate_distance(-90,0,90,0)
+    # print(res)
+    # res = calculate_distance(0,180,0,-180)
+    # print(res)
+    # res = calculate_distance(0,0,0,0)
+    # print(res)
+    
     
     
 
