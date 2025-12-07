@@ -1,8 +1,3 @@
-"""Projectile data model for ballistic calculations.
-
-This module defines the properties of a projectile used in trajectory simulations.
-"""
-
 from dataclasses import dataclass
 from enum import Enum
 
@@ -30,9 +25,19 @@ class Projectile:
     ballistic_coefficient: float
     drag_model: DragModel = DragModel.G1
     area_m2: float = None
+    form_factor: float = None
 
     def __post_init__(self):
         """Calculates derived properties after initialization."""
         if self.area_m2 is None:
             import math
             self.area_m2 = math.pi * (self.caliber_m / 2) ** 2
+            
+        if (self.drag_model == DragModel.G1 or self.drag_model == DragModel.G7) and self.ballistic_coefficient > 0:
+            mass_lb = self.mass_kg * 2.20462
+            caliber_in = self.caliber_m * 39.3701
+            
+            sectional_density = mass_lb / (caliber_in ** 2)
+            self.form_factor = sectional_density / self.ballistic_coefficient
+        else:
+            self.form_factor = 1.0

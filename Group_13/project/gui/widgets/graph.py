@@ -74,14 +74,14 @@ class GraphWidget(QWidget):
         if event.inaxes is None:
             return
             
-        if event.button == 1:  # Left mouse button
+        if event.button == 1:
             self._pan_start = (event.xdata, event.ydata, event.inaxes)
-            self.canvas.setCursor(1)  # Closed hand cursor
+            self.canvas.setCursor(1)
     
     def _on_button_release(self, event):
-        if event.button == 1 and self._pan_start is not None:  # Left mouse button
+        if event.button == 1 and self._pan_start is not None:
             self._pan_start = None
-            self.canvas.setCursor(0)  # Arrow cursor
+            self.canvas.setCursor(0)
 
     def _on_mouse_move(self, event):
         if self._pan_start is None or event.inaxes is None:
@@ -94,11 +94,10 @@ class GraphWidget(QWidget):
         dx = start_x - event.xdata
         dy = start_y - event.ydata
         
-        # Get current limits
         x_left, x_right = ax.get_xlim()
         y_bottom, y_top = ax.get_ylim()
         
-        # Apply the pan
+        # pan
         ax.set_xlim(x_left + dx, x_right + dx)
         ax.set_ylim(y_bottom + dy, y_top + dy)
         
@@ -120,7 +119,6 @@ class GraphWidget(QWidget):
                 step = 1 if getattr(event, 'step', 1) > 0 else -1
             scale = 1.0 / base_scale if step > 0 else base_scale
 
-        # get current limits
         x_left, x_right = ax.get_xlim()
         y_bottom, y_top = ax.get_ylim()
 

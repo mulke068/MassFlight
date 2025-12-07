@@ -138,7 +138,6 @@ class MainWindow(QMainWindow):
         self.world_view_container.animate_btn.clicked.connect(self.run_animation)
         self.world_view_container.reset_btn.clicked.connect(self.reset_simulation)
         
-        # --- Pages List ---
         self.pages = [
             self.world_view_container,
             graph.GraphWidget(graph_type=GraphType.Altitude),
@@ -170,7 +169,6 @@ class MainWindow(QMainWindow):
         self.sphere_widget.overlay.clear()
         self.sphere_widget.update()
         
-        # Hide UI via container
         self.world_view_container.results_panel.hide()
         self.world_view_container.animate_btn.hide()
         self.world_view_container.reset_btn.hide()
@@ -286,10 +284,12 @@ class MainWindow(QMainWindow):
             telemetry = result['telemetry']
             times = telemetry.get('time', [])
             altitudes = telemetry.get('altitude', [])
+            latitudes = telemetry.get('latitude', [])
+            gravities = telemetry.get('gravity', [])
             
             self.pages[1].update_data(list(zip(times, altitudes)))
             self.pages[2].update_data(list(zip(times, telemetry.get('latitude', []))))
             self.pages[3].update_data(list(zip(times, telemetry.get('longitude', []))))
             self.pages[4].update_data(list(zip(times, telemetry.get('velocity', []))))
             self.pages[5].update_data(list(zip(times, telemetry.get('distance', []))))
-            self.pages[6].update_data(list(zip(telemetry.get('latitude', []), telemetry.get('gravity', []))))
+            self.pages[6].update_data(list(zip(latitudes, gravities)))

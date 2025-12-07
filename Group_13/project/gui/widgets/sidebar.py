@@ -3,7 +3,7 @@ import logging
 
 from config.app_config import THEME
 
-logger = logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 
 class SidebarButton(QPushButton):
     def __init__(self, text, parent=None):
