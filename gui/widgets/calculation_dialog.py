@@ -1,3 +1,6 @@
+from config.core_config import MAX_VELOCITY
+from services.projectile import DragModel
+from PyQt6.QtWidgets import QComboBox
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QFormLayout, QGroupBox, 
                              QDoubleSpinBox, QProgressBar, QMessageBox)
@@ -6,6 +9,7 @@ from config.app_config import THEME
 
 class SolverWorker(QThread):
     progress = pyqtSignal(int)
+    status = pyqtSignal(str)
     finished = pyqtSignal(float, float) # velocity, heading
     error = pyqtSignal(str)
 
@@ -26,7 +30,8 @@ class SolverWorker(QThread):
                 target_lon=self.target_lon,
                 climb_angle=self.data['climb_angle'],
                 projectile_params=self.data['projectile'],
-                progress_callback=self.report_progress
+                progress_callback=self.report_progress,
+                status_callback=self.report_status
             )
             self.finished.emit(vel if vel else 0.0, heading if heading else 0.0)
         except Exception as e:
@@ -34,6 +39,9 @@ class SolverWorker(QThread):
 
     def report_progress(self, val):
         self.progress.emit(val)
+
+    def report_status(self, msg):
+        self.status.emit(msg)
 
 class CalculationDialog(QDialog):
     def __init__(self, parent=None):
@@ -155,11 +163,16 @@ class CalculationDialog(QDialog):
         
         self.bc_input = QDoubleSpinBox()
         self.bc_input.setRange(0.01, 10.0)
-        self.bc_input.setValue(0.5)
+        self.bc_input.setValue(2)
+
+        self.drag_model_input = QComboBox()
+        self.drag_model_input.addItems(["G1", "G7"])
+        self.drag_model_input.setCurrentIndex(0)
         
         proj_layout.addRow("Mass:", self.mass_input)
         proj_layout.addRow("Caliber:", self.cal_input)
         proj_layout.addRow("Ballistic Coeff:", self.bc_input)
+        proj_layout.addRow("Drag Model:", self.drag_model_input)
         proj_group.setLayout(proj_layout)
         layout.addWidget(proj_group)
         
@@ -255,7 +268,7 @@ class CalculationDialog(QDialog):
             self.heading_input.setValue(heading)
         except ImportError:
             pass 
-
+            
     def on_calculate_clicked(self):
         if self.target_mode:
             self.run_auto_solver()
@@ -269,6 +282,7 @@ class CalculationDialog(QDialog):
         # Disable UI
         self.calc_btn.setEnabled(False)
         self.progress_bar.setValue(0)
+        self.progress_bar.setFormat("Checking parameters...")
         self.progress_bar.show()
         
         from services.ballistic_manager import BallisticManager
@@ -276,6 +290,7 @@ class CalculationDialog(QDialog):
         
         self.worker = SolverWorker(manager, data, self.target_lat_input.value(), self.target_lon_input.value())
         self.worker.progress.connect(self.update_progress)
+        self.worker.status.connect(self.update_status)
         self.worker.finished.connect(self.solver_finished)
         self.worker.error.connect(self.solver_error)
         self.worker.start()
@@ -283,25 +298,36 @@ class CalculationDialog(QDialog):
     def update_progress(self, val):
         self.progress_bar.setValue(val)
 
+    def update_status(self, msg):
+        self.progress_bar.setFormat(f"{msg} - %p%")
+
     def solver_finished(self, vel, heading):
         self.progress_bar.hide()
+        self.progress_bar.setFormat("%p%") # Reset format
         self.calc_btn.setEnabled(True)
         
         if vel and heading:
-            self.vel_input.setValue(vel)
-            self.heading_input.setValue(heading)
-            self.solved_velocity = vel
-            self.accept()
+            if vel >= MAX_VELOCITY:
+                QMessageBox.warning(self, "Solver Failed", "Target out of range (max velocity limit reached)")
+            else:
+                self.vel_input.setValue(vel)
+                self.heading_input.setValue(heading)
+                self.solved_velocity = vel
+                self.accept()
         else:
             QMessageBox.warning(self, "Solver Failed", "Could not find a firing solution for this target.")
 
     def solver_error(self, msg):
         self.progress_bar.hide()
+        self.progress_bar.setFormat("%p%") # Reset format
         self.calc_btn.setEnabled(True)
         QMessageBox.critical(self, "Error", f"Solver error: {msg}")
 
     def get_data(self):
         """Returns a dictionary of all input values."""
+        model_name = self.drag_model_input.currentText()
+        drag_model = DragModel.G7 if model_name == "G7" else DragModel.G1
+        
         return {
             "lat": self.lat_input.value(),
             "lon": self.lon_input.value(),
@@ -312,6 +338,7 @@ class CalculationDialog(QDialog):
             "projectile": {
                 "mass": self.mass_input.value(),
                 "caliber": self.cal_input.value(),
-                "bc": self.bc_input.value()
+                "bc": self.bc_input.value(),
+                "drag_model": drag_model
             }
         }
