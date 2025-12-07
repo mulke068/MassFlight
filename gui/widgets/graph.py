@@ -62,7 +62,6 @@ class GraphWidget(QWidget):
             self._pan_start = None
             self.canvas.setCursor(0)  # Arrow cursor
 
-
     def _on_mouse_move(self, event):
         if self._pan_start is None or event.inaxes is None:
             return
