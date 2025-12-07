@@ -1,5 +1,0 @@
-i like to do a complete clean up if googlestyle for naming or classing your wekome
-first i dont want a import inside a definition everython o the top of the file 
-second ther is no constant defined that is not in the config files (variables that also would be nice to configure are also put inside the config files)
-trith everyfunction has its own function part an should not do 2 functionallity in one time (depends on the size of curse, so that there is no 2complex function with a name that has nothing to do with it) nor should ther exist 2 the same funktionallity like(animation_step only trajectory handeld an not somehow also at another place)
-forth everything has a proper place to be thus every oter needs to go to to the proper spot (function classes folders files) to mentain a proper and well structured reop (to find everything easy because its logical thats in there) (! i have also prepared a dumy but has some functionallity that is placed wrong to see if the job is donne right and the strukture where updated)
