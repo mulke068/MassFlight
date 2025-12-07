@@ -1,0 +1,33 @@
+app.exec_() -> app.exec()
+popup.exec_() -> popup.exec()
+event.pos() -> event.position() 
+
+footer.setAlignment(Qt.AlignCenter) 
+-> 
+footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+
+self.setFocusPolicy(Qt.StrongFocus)
+->
+self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+self.setCursor(Qt.PointingHandCursor)
+->
+self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+self.speed_slider = QSlider(Qt.Horizontal, self)
+->
+self.speed_slider = QSlider(Qt.Orientation.Horizontal, self)
+
+self.content_label.setTextFormat(Qt.RichText)
+->
+self.content_label.setTextFormat(Qt.TextFormat.RichText)
+
+
+from PyQt5.QtWidgets import QOpenGLWidget
+->
+from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+->
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
