@@ -3,7 +3,6 @@ import logging
 
 from gui.engine import trajectory
 from gui.engine.trajectory import Trajectory
-# from gui.engine.trajectory import SAMPLE_TRAJECTORY
 
 LOG = logging.getLogger(__name__)
 
@@ -37,8 +36,6 @@ class Overlay:
         """Starts the trajectory animation."""
         if self.trajectory.full_trajectory:
             self.trajectory.start_animation()
-        # Fallback: If no trajectory but we have pins, maybe we should have calculated? 
-        # For now, just do nothing or use sample if explicitly requested, but better to rely on calculation.
         elif not self.trajectory.full_trajectory:
             LOG.warning("No trajectory data available to animate.")
         return True

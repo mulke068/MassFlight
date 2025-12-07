@@ -30,12 +30,10 @@ class Trajectory:
         p1_norm = tuple(c / r1 for c in point1)
         p2_norm = tuple(c / r2 for c in point2)
         
-        # Calculate angle between points
         dot = sum(a * b for a, b in zip(p1_norm, p2_norm))
         dot = max(-1.0, min(1.0, dot))  # Clamp for numerical stability
         angle = math.acos(dot)
         
-        # Generate interpolated points using SLERP
         for i in range(num_steps + 1):
             t = i / num_steps
             
@@ -92,7 +90,6 @@ class Trajectory:
             self.is_animating = False
             return False
         
-        # Add point(s) based on animation speed
         for _ in range(self.animation_speed):
             if self.current_index >= len(self.full_trajectory):
                 self.is_animating = False
