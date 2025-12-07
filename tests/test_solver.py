@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+import pytest
 
 # Add parent directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +27,7 @@ def test_solver():
     print(f"Testing Solver: Start({start_lat},{start_lon}) -> Target({target_lat},{target_lon})")
     
     # Solve for 45 degrees
-    velocity = bm.solve_firing_solution(
+    velocity, heading = bm.solve_firing_solution(
         lat=start_lat,
         lon=start_lon,
         alt=0,
@@ -36,7 +37,7 @@ def test_solver():
     )
     
     if velocity:
-        print(f"Solver returned Velocity: {velocity:.2f} m/s")
+        print(f"Solver returned Velocity: {velocity:.2f} m/s, Heading: {heading:.2f}")
         
         # Verify
         res = bm.calculate_trajectory(
@@ -44,28 +45,19 @@ def test_solver():
             lon=start_lon,
             altitude=0,
             velocity=velocity,
-            heading=90, # East
+            heading=heading, 
             climb_angle=45
         )
         
         dist = res["summary"]["total_distance"]
-        print(f"Simulated Distance: {dist:.2f} m")
-        
-        # Calculate expected distance
         from utils.coordinates import calculate_distance
         expected_km = calculate_distance(start_lat, start_lon, target_lat, target_lon)
         expected_m = expected_km * 1000.0
-        print(f"Target Distance: {expected_m:.2f} m")
         
         error = abs(dist - expected_m)
         print(f"Error: {error:.2f} m")
         
-        if error < 50:
-            print("SUCCESS: Target hit within tolerance.")
-        else:
-            print("FAILURE: Target missed.")
+        # Assert within 50m tolerance
+        assert error < 50.0, f"Target missed by {error:.2f} m"
     else:
-        print("FAILURE: Solver could not find a solution.")
-
-if __name__ == "__main__":
-    test_solver()
+        pytest.fail("Solver could not find a solution.")

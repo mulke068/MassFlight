@@ -307,15 +307,15 @@ class CalculationDialog(QDialog):
         self.calc_btn.setEnabled(True)
         
         if vel and heading:
-            if vel >= MAX_VELOCITY:
-                QMessageBox.warning(self, "Solver Failed", "Target out of range (max velocity limit reached)")
-            else:
-                self.vel_input.setValue(vel)
-                self.heading_input.setValue(heading)
-                self.solved_velocity = vel
-                self.accept()
+            self.vel_input.setValue(vel)
+            self.heading_input.setValue(heading)
+            self.solved_velocity = vel
+            self.accept()
         else:
-            QMessageBox.warning(self, "Solver Failed", "Could not find a firing solution for this target.")
+            QMessageBox.warning(self, "Solver Failed", 
+                              "Could not find a firing solution.\n\n"
+                              "The target is likely out of range for the current projectile.\n"
+                              "Try increasing mass/velocity or moving the target closer.")
 
     def solver_error(self, msg):
         self.progress_bar.hide()

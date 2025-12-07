@@ -1,4 +1,5 @@
 from gui.widgets.graph import GraphType
+from gui.widgets.dashboard import DashboardWidget # New Import
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget, QMessageBox, QPushButton
@@ -41,7 +42,7 @@ class MainWindow(QMainWindow):
         main_widget.setLayout(main_layout)
         
         self.page_switch(0)
-    
+
     def sidebar_area(self):
         sidebar_frame = QFrame()
         sidebar_frame.setFixedWidth(400)
@@ -67,9 +68,7 @@ class MainWindow(QMainWindow):
 
         buttons_data = [
             ("World View", 0),
-            ("Altitude", 1),
-            ("Latitude", 2),
-            ("Velocity", 3)
+            ("Dashboard", 1), # Replaced individual graphs
         ]
         
         self.button_group = []
@@ -135,12 +134,13 @@ class MainWindow(QMainWindow):
         self.world_view_container.animate_btn.clicked.connect(self.run_animation)
         self.world_view_container.reset_btn.clicked.connect(self.reset_simulation)
         
+        # --- Page 1: Dashboard ---
+        self.dashboard = DashboardWidget()
+        
         # --- Pages List ---
         self.pages = [
             self.world_view_container,
-            graph.GraphWidget(graph_type=GraphType.Altitude),
-            graph.GraphWidget(graph_type=GraphType.Latitude),
-            graph.GraphWidget(graph_type=GraphType.Velocity)
+            self.dashboard
         ]
         
         for page in self.pages:
@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
         content_frame.setLayout(content_layout)
         
         return content_frame
-
+        
     def run_animation(self):
         """Starts the trajectory animation on the sphere."""
         self.sphere_widget.start_animation()
@@ -171,9 +171,8 @@ class MainWindow(QMainWindow):
         self.world_view_container.speed_label.hide()
         self.world_view_container.speed_slider.hide()
         
-        # Clear graphs
-        for i in range(1, 4):
-            self.pages[i].update_data([])
+        # Clear Dashboard
+        self.dashboard.update_data(None)
 
     def page_switch(self, index):
         self.stacked_widget.setCurrentIndex(index)
@@ -258,7 +257,6 @@ class MainWindow(QMainWindow):
                 LOG.info(f"Calculated Heading: {heading}")
                 
         return start_lat, start_lon, heading, target_lat, target_lon
-
     def _update_visualization(self, result, data):
         """Updates the visualization with simulation results."""
         # Update Sphere View
@@ -276,10 +274,18 @@ class MainWindow(QMainWindow):
             # Force layout update
             self.world_view_container.update_layout()
             
-            # Update Graphs
-            telemetry = result['telemetry']
-            times = telemetry.get('time', [])
-            
-            self.pages[1].update_data(list(zip(times, telemetry.get('altitude', []))))
-            self.pages[2].update_data(list(zip(times, telemetry.get('latitude', []))))
-            self.pages[3].update_data(list(zip(times, telemetry.get('velocity', []))))
+            # Update Dashboard
+            # Update Dashboard
+            try:
+                telemetry = result['telemetry']
+                # BallisticManager returns telemetry as a dictionary of lists (columnar)
+                # Check if it is indeed a dict
+                if isinstance(telemetry, dict):
+                     self.dashboard.update_data(telemetry)
+                else:
+                     LOG.error(f"Telemetry is not a dict: {type(telemetry)}")
+                     
+            except Exception as e:
+                import traceback
+                LOG.error(f"Dashboard update failed: {traceback.format_exc()}")
+                # Don't fail the whole calculation if just dashboard fails

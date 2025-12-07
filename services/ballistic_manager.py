@@ -22,6 +22,8 @@ from utils.coordinates import (
 from services.projectile import Projectile, DragModel
 from services.physics_engine import PhysicsEngine
 from services.weather_manager import WeatherManager
+from config.core_config import MAX_VELOCITY
+from config.core_config import MAX_SOLVER_ITERATIONS_VELOCITY, RANGE_TOLERANCE_M
 
 LOG = logging.getLogger(__name__)
 
@@ -119,6 +121,7 @@ class BallisticManager:
             "altitude": [d["altitude"] for d in raw_telemetry],
             "velocity": [d["velocity"] for d in raw_telemetry],
             "distance": [d["distance"] for d in raw_telemetry],
+            "flight_path_angle": [d["flight_path_angle"] for d in raw_telemetry],
             "latitude": [p[0] for p in simulation_result["points"][::10]],
             "longitude": [p[1] for p in simulation_result["points"][::10]]
         }
@@ -170,8 +173,6 @@ class BallisticManager:
                 status_callback(f"Iter {h_iter+1}/{max_heading_iter}: Heading {heading_guess:.2f}°, Vel {v_guess:.0f} m/s")
 
             # --- Inner Loop: Solve Velocity for current Heading ---
-            # Pass raw progress callback to let the bar fill 0-100% for this simulation attempt.
-            # This provides better "heartbeat" feedback than a frozen global bar.
             v_solved = self._solve_velocity_for_heading(
                 lat, lon, alt, heading_guess, climb_angle, projectile_params, target_dist_m, v_guess,
                 progress_wrapper=progress_callback
@@ -184,7 +185,6 @@ class BallisticManager:
             v_guess = v_solved 
             
             # Check Lateral Error
-            # Run final check simulation (also animates bar)
             if status_callback:
                  status_callback(f"Iter {h_iter+1}: Verifying Solution...")
                  
@@ -214,12 +214,9 @@ class BallisticManager:
         return v_solved, heading_guess
 
     def _solve_velocity_for_heading(self, lat, lon, alt, heading, climb, params, target_dist, v_guess, progress_wrapper=None):
-        # Secant method for velocity
+
         v0 = v_guess
         v1 = v0 * 1.05
-        
-        from config.core_config import MAX_VELOCITY
-        from config.core_config import MAX_SOLVER_ITERATIONS_VELOCITY, RANGE_TOLERANCE_M # Ensure imports if not top-level
         
         for i in range(MAX_SOLVER_ITERATIONS_VELOCITY):
             # V0
@@ -246,7 +243,6 @@ class BallisticManager:
             if abs(err1) < RANGE_TOLERANCE_M: return v1
             
             diff = err1 - err0
-            # if abs(diff) < 1e-9
             if abs(diff) < 1e-6: # Prevent division by zero or huge jumps
                 v_next = v1 * 1.05 + 10
             else:
@@ -256,10 +252,9 @@ class BallisticManager:
             if v_next < 10: v_next = 10
             if v_next > MAX_VELOCITY: v_next = MAX_VELOCITY
             
-            # If we are stuck at max velocity, maybe we can't reach it?
             if v_next == MAX_VELOCITY and v1 == MAX_VELOCITY:
                  LOG.warning("Solver hit max velocity limit. Target might be out of range.")
-                 return MAX_VELOCITY
+                 return None
             
             v0 = v1
             v1 = v_next

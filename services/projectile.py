@@ -3,10 +3,8 @@ from enum import Enum
 
 
 class DragModel(Enum):
-    """Enumeration of supported drag models."""
     G1 = "G1"
     G7 = "G7"
-    # Future models can be added here (e.g., custom Cd curves)
 
 
 @dataclass

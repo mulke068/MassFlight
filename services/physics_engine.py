@@ -20,10 +20,8 @@ import logging
 LOG = logging.getLogger(__name__)
 
 class PhysicsEngine:
-    """Core physics engine for calculating projectile trajectories."""
 
     def __init__(self):
-        """Initializes the physics engine."""
         pass
 
     def calculate_air_density(self, altitude_m: float, temperature_c: float = STD_TEMP_C,
@@ -40,7 +38,6 @@ class PhysicsEngine:
         Returns:
             Air density in kg/m^3.
         """
-        # Convert inputs to SI
         temp_k = temperature_c + 273.15
         pressure_pa = pressure_hpa * 100.0
 
@@ -66,7 +63,7 @@ class PhysicsEngine:
     def _calculate_speed_of_sound(self, temp_k: float) -> float:
         """Calculates speed of sound in air at a given temperature."""
         gamma = 1.4  # Adiabatic index for air
-        r = GAS_CONSTANT # Specific gas constant for air
+        r = GAS_CONSTANT 
         return math.sqrt(gamma * r * temp_k)
 
     def _get_drag_coefficient(self, mach: float, drag_model: DragModel) -> float:
@@ -94,7 +91,7 @@ class PhysicsEngine:
         else:
             return table[-1][1]
                 
-        return 0.5 # Default fallback
+        return 0.5 
 
     def _calculate_coriolis_acceleration(self, lat_deg: float, vx: float, vy: float, vz: float) -> Tuple[float, float, float]:
         """Calculates Coriolis acceleration vector in local ENU frame.
@@ -106,7 +103,6 @@ class PhysicsEngine:
         Returns:
             (ax, ay, az) Coriolis acceleration in m/s^2.
         """
-        # Convert latitude to radians
         phi = math.radians(lat_deg)
         omega = EARTH_OMEGA
 
@@ -189,7 +185,7 @@ class PhysicsEngine:
                              dt: float = 0.01,
                              progress_callback = None) -> Dict[str, Any]:
         """Integrates the trajectory over time."""
-        # Initial State
+        
         curr_lat = start_lat
         curr_lon = start_lon
         z = start_alt
@@ -236,18 +232,14 @@ class PhysicsEngine:
         from config.core_config import EARTH_RADIUS_M, MAX_STEPS
 
         while z >= 0 and step < MAX_STEPS:
-            # Progress Reporting
-            # Scale against a "Nominal" long flight (e.g. 200,000 steps = ~33 mins)
-            # This ensures the bar moves for reasonable long flights.
-            # If it exceeds this, we clamp or slowly approach 100.
+ 
             if progress_callback and step % 2000 == 0:
                  nominal_max = 200000
                  percent = int((step / nominal_max) * 100)
                  if percent > 99: percent = 99
                  progress_callback(percent)
 
-            # 1. Get Environmental Data
-            # Use current latitude for Gravity
+
             gravity = get_gravity_at_location(curr_lat, z) 
             density = self.calculate_air_density(z, temp_c, pressure_hpa, gravity)
             
@@ -255,7 +247,6 @@ class PhysicsEngine:
             sl_temp_k = temp_c + 273.15
             local_temp_k = sl_temp_k - (0.0065 * min(z, 11000))
 
-            # 2. Calculate Forces
             # Gravity acts down (-z)
             fg_z = -gravity * projectile.mass_kg
 
@@ -271,9 +262,6 @@ class PhysicsEngine:
             fc_z = ac_z * projectile.mass_kg
 
             # Centrifugal / Geometric Lift (Curvature compensation)
-            # As projectile moves horizontally, Earth curves away.
-            # In a fixed local frame, this looks like an upward force.
-            # F_lift = m * v_horizontal^2 / R
             current_radius = EARTH_RADIUS_M + z
             v_horiz_sq = vx**2 + vy**2
             f_lift_z = projectile.mass_kg * v_horiz_sq / current_radius
@@ -288,7 +276,6 @@ class PhysicsEngine:
             prev_vx, prev_vy, prev_vz = vx, vy, vz
             prev_t = t
 
-            # 3. Integrate (Euler)
             # Velocity update
             ax = fx / projectile.mass_kg
             ay = fy / projectile.mass_kg
@@ -299,12 +286,9 @@ class PhysicsEngine:
             vz += az * dt
 
             # Position Update (Spherical)
-            # dLat = v_north / R (radians)
-            # dLon = v_east / (R * cos(lat)) (radians)
             d_lat_rad = (vy / current_radius) * dt
             d_lon_rad = (vx / (current_radius * math.cos(math.radians(curr_lat)))) * dt
             
-            # Convert to degrees
             curr_lat += math.degrees(d_lat_rad)
             curr_lon += math.degrees(d_lon_rad)
             
@@ -324,7 +308,6 @@ class PhysicsEngine:
                     alpha = 0
                 
                 # Back-interpolate position
-                # Simple linear interpolation on lat/lon
                 curr_lat = prev_lat + (curr_lat - prev_lat) * alpha
                 curr_lon = prev_lon + (curr_lon - prev_lon) * alpha
                 z = 0.0
@@ -337,11 +320,15 @@ class PhysicsEngine:
                 
                 points.append((curr_lat, curr_lon, z))
                 
+                v_horiz_impact = math.sqrt(vx**2 + vy**2)
+                fpa_impact = math.degrees(math.atan2(vz, v_horiz_impact)) if v_horiz_impact > 0 else 0.0
+
                 telemetry.append({
                     "time": round(t, 2),
                     "altitude": round(z, 2),
                     "velocity": round(math.sqrt(vx**2 + vy**2 + vz**2), 2),
                     "distance": round(total_dist, 2),
+                    "flight_path_angle": round(fpa_impact, 2),
                     "latitude": curr_lat,
                     "longitude": curr_lon
                 })
@@ -350,11 +337,15 @@ class PhysicsEngine:
             points.append((curr_lat, curr_lon, z))
             
             if step % 10 == 0:
+                v_horiz = math.sqrt(vx**2 + vy**2)
+                fpa = math.degrees(math.atan2(vz, v_horiz)) if v_horiz > 0 else 0.0
+                
                 telemetry.append({
                     "time": round(t, 2),
                     "altitude": round(z, 2),
                     "velocity": round(math.sqrt(vx**2 + vy**2 + vz**2), 2),
                     "distance": round(total_dist, 2),
+                    "flight_path_angle": round(fpa, 2),
                     "latitude": curr_lat,
                     "longitude": curr_lon
                 })
