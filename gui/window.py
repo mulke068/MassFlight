@@ -1,3 +1,4 @@
+from gui.widgets.graph import GraphType
 from PyQt6 import QtGui
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QVBoxLayout, QStackedWidget, QLabel, QFrame, QWidget, QMessageBox, QPushButton
@@ -137,9 +138,9 @@ class MainWindow(QMainWindow):
         # --- Pages List ---
         self.pages = [
             self.world_view_container,
-            graph.GraphWidget(graph_type='Altitude'),
-            graph.GraphWidget(graph_type='Latitude'),
-            graph.GraphWidget(graph_type='Velocity')
+            graph.GraphWidget(graph_type=GraphType.Altitude),
+            graph.GraphWidget(graph_type=GraphType.Latitude),
+            graph.GraphWidget(graph_type=GraphType.Velocity)
         ]
         
         for page in self.pages:

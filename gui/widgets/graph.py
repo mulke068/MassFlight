@@ -1,10 +1,16 @@
+from enum import Enum
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from config.app_config import THEME
 
+class GraphType(Enum): # TODO: create new graph types
+    Altitude = "Altitude"
+    Latitude = "Latitude"
+    Velocity = "Velocity"
+
 class GraphWidget(QWidget):
-    def __init__(self, graph_values=[(0,0)], graph_type='Altitude', parent=None):
+    def __init__(self, graph_values=[(0,0)], graph_type=GraphType.Altitude, parent=None):
         super().__init__(parent)
         self.background_color = '#1e1e1e'
         self.graph_type = graph_type
@@ -18,15 +24,15 @@ class GraphWidget(QWidget):
     def initUI(self): 
         ax = self.figure.add_subplot(111)
         
-        if "Altitude" in self.graph_type:
+        if GraphType.Altitude == self.graph_type:
             color = THEME['content']
             ax.set_ylabel('Meters (m)', color='white')
             ax.set_xlabel('Time (s)', color='white')
-        elif "Latitude" in self.graph_type:
+        elif GraphType.Latitude == self.graph_type:
             color = THEME['content']
-            ax.set_ylabel('Meters (m)', color='white')
+            ax.set_ylabel('Latitude (deg)', color='white')
             ax.set_xlabel('Time (s)', color='white')
-        elif "Velocity" in self.graph_type:
+        elif GraphType.Velocity == self.graph_type:
             color = THEME['content']
             ax.set_ylabel('Velocity (m/s)', color='white')
             ax.set_xlabel('Time (s)', color='white')
@@ -36,7 +42,7 @@ class GraphWidget(QWidget):
             ax.set_xlabel('Time (s)', color='white')
         
         ax.plot(self.x_axis, self.y_axis, marker='o', linewidth=3, markersize=8, color='white')
-        ax.set_title(self.graph_type, color='white', fontsize=14, fontweight='bold')
+        ax.set_title(self.graph_type.value, color='white', fontsize=14, fontweight='bold')
         ax.set_facecolor(THEME['background_accent'])
         ax.tick_params(axis='x', colors='white')
         ax.tick_params(axis='y', colors='white')

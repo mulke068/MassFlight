@@ -83,27 +83,6 @@ class PhysicsEngine:
         if v_mag == 0:
             return (0.0, 0.0, 0.0)
 
-        # Estimate Cd from BC (Simplified)
-        # Standard G1 projectile mass=1lb, d=1inch, Cd=0.5ish?
-        # BC = m / (d^2 * i) -> i = m / (d^2 * BC)
-        # Cd = Cd_std * i
-        # This is complex without a full G1 table.
-        # For this implementation, we will use a simplified constant Cd derived from BC
-        # assuming a standard form factor or just taking BC as a direct scaler if provided roughly.
-        #
-        # Better approach for V1: Use a fixed Cd of 0.5 if BC is not perfectly calibrated,
-        # OR use the standard retardation formula: Drag = 0.5 * rho * v^2 * A * Cd
-        #
-        # Let's assume the user might want to provide Cd directly or we estimate it.
-        # Since Projectile has BC, let's try to use it.
-        # Physics: Deceleration = -0.5 * rho * v^2 * A * Cd / m
-        # Ballistic definition: Deceleration = -0.5 * rho * v^2 / BC_phys (where BC_phys has units kg/m2)
-        #
-        # Let's use a constant Cd = 0.47 (Sphere) or 0.2-0.5 (Bullet) for now as a fallback
-        # if we don't have a full G1 model.
-        #
-        # User asked for "Projectile Mass, Drag Coeff, Area" in the plan, but I used BC in the class.
-        # I will use a constant Cd = 0.5 for now to ensure the code runs, as implementing a full G1 G-function is out of scope for "V1".
         cd = 0.5
 
         # Drag magnitude
