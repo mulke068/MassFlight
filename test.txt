@@ -1,0 +1,53 @@
+can you try not using unitest but pytest and don't change the regex to re try using myenv then run the programm 
+idk why the projectile file there is but i tink it got messed ub can you bind the data after the calcultion points x,y,z .... to trajectory or overlay where we can see the trajectory or the projectile idk and when you want to run the file you need to add --> import sys
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path so Python can find 'config'
+sys.path.append(parent_dir) --> when we dont start the programm from the top main or something like that or it is becuase it dint run with myenv enabled if not then there is anohter problem with that python does not detect or see the file there is NO PROBLEM wiht the PACKAGES or LIBERYS 
+
+Currently it can calculate the trajectory but it does not flow with the programm so in the sphere map programm you can pick one start location an one finishlocation in overlay vou have a get_pins(index) function to get it personally i dont know how we should do it eather to let the person choose or let the progamm calculate it , but it would be nice to have that bit of bofe but it will interfer with the calculation an tey will get wrong so idk
+So after you pressed calculate the programm calculate it after that the animation of the trajectory should start so that the user sees everything and the values should load into the grafs currently whe have only 3 types of grafts (Altitude,Latitude,Velocity) but you can add more currently you need to add data at the gui/window.py graph.GraphWidget(graph_type='Latitude') graph.GraphWidget([(x,t),(x,t)],graph_type='Latitude') but you can change it if it is bad implemented
+And also i want a change where the calculate button is so that it is in the window where world view is and floats so button right or top right if not possible or complicated don't change it 
+After the calculation is done the is a pupop where the final results are shown afer ok thes issaper thats also something i don't like i want that they are permantaly shown somewhere , and that at world view a button is where you can press a button to animate the trajectory thats loaded in or reset it so you can see the trajectory more often then at the strat 
+Also when you do where the place is where the final resoults are shown can you add more also like the user input the direction .... yk 
+
+services/ballistic_manager.py: Service orchestrator that connects GUI inputs, Weather, and Physics.
+everything that adds somewidget to the ui please be at the proper location /gui/widgets
+
+IMPORTANT
+Not everything is a service like weather_manager if you need to create a new folder for a better logik somewhere you can create it  because i set the structure because i want to have the overview and everything has todo something with it is there - if you need to change location of other files because of comfusion say so or do it 
+
+On dialog success:
+
+Run BallisticManager.calculate_trajectory.
+Pass points to self.pages[0].overlay....
+i don't thing tahts is right self.pases[0].overlay.set_trajectory_data is is not that it simply directly talks to the overlay class ? so that it says self.overlay.set_trajecotry_data ?
+
+Inputs:
+
+Latitude, Longitude, Altitude (Launch)
+Velocity, Heading, Climb Angle
+Projectile Mass, Cali...
+you already have the start lat,lon, and the finish lat,lon from the pins and set it already inside but if the user want to change it he is free to do it , and when i press the calculate button before he did the pins lett the values be 0
+
+[NEW] overlay_widgets.py
+Same here if possible don't create a button inside where the sphere is but on the gui layer from window if not possible don't change where the button is 
+
+Connect SphereWidget.calculate_btn to open_calculation_dialog.
+if possible don't create a button inside where the sphere is but on the gui layer from window if not possible don't change where the button is
+
+On dialog success:
+
+Run BallisticManager.calculate_trajectory.
+Pass points to self.pages[0].overlay....
+Not optimal to update graphs they are also a  importent function
+
+
+import sys
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+# Add the parent directory to sys.path so Python can find 'config'
+sys.path.append(parent_dir) --> when we dont start the programm from the top main or something like that or it is becuase it dint run with myenv enabled if not then there is anohter problem with that python does not detect or see the file there is NO PROBLEM wiht the PACKAGES or LIBERYS 

@@ -1,12 +1,16 @@
-
-
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from enum import Enum
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from config.app_config import THEME
 
+class GraphType(Enum): # TODO: create new graph types
+    Altitude = "Altitude"
+    Latitude = "Latitude"
+    Velocity = "Velocity"
+
 class GraphWidget(QWidget):
-    def __init__(self, graph_values=[(0,0)], graph_type='Altitude', parent=None):
+    def __init__(self, graph_values=[(0,0)], graph_type=GraphType.Altitude, parent=None):
         super().__init__(parent)
         self.background_color = '#1e1e1e'
         self.graph_type = graph_type
@@ -20,15 +24,15 @@ class GraphWidget(QWidget):
     def initUI(self): 
         ax = self.figure.add_subplot(111)
         
-        if "Altitude" in self.graph_type:
+        if GraphType.Altitude == self.graph_type:
             color = THEME['content']
             ax.set_ylabel('Meters (m)', color='white')
             ax.set_xlabel('Time (s)', color='white')
-        elif "Latitude" in self.graph_type:
+        elif GraphType.Latitude == self.graph_type:
             color = THEME['content']
-            ax.set_ylabel('Meters (m)', color='white')
+            ax.set_ylabel('Latitude (deg)', color='white')
             ax.set_xlabel('Time (s)', color='white')
-        elif "Velocity" in self.graph_type:
+        elif GraphType.Velocity == self.graph_type:
             color = THEME['content']
             ax.set_ylabel('Velocity (m/s)', color='white')
             ax.set_xlabel('Time (s)', color='white')
@@ -38,7 +42,7 @@ class GraphWidget(QWidget):
             ax.set_xlabel('Time (s)', color='white')
         
         ax.plot(self.x_axis, self.y_axis, marker='o', linewidth=3, markersize=8, color='white')
-        ax.set_title(self.graph_type, color='white', fontsize=14, fontweight='bold')
+        ax.set_title(self.graph_type.value, color='white', fontsize=14, fontweight='bold')
         ax.set_facecolor(THEME['background_accent'])
         ax.tick_params(axis='x', colors='white')
         ax.tick_params(axis='y', colors='white')
@@ -63,7 +67,6 @@ class GraphWidget(QWidget):
         if event.button == 1 and self._pan_start is not None:  # Left mouse button
             self._pan_start = None
             self.canvas.setCursor(0)  # Arrow cursor
-
 
     def _on_mouse_move(self, event):
         if self._pan_start is None or event.inaxes is None:
@@ -126,6 +129,20 @@ class GraphWidget(QWidget):
         ax.set_xlim(new_left, new_right)
         ax.set_ylim(new_bottom, new_top)
         self.canvas.draw_idle()
+
+    def update_data(self, new_values):
+        """Updates the graph with new data points."""
+        if not new_values:
+            self.values = []
+            self.x_axis = []
+            self.y_axis = []
+        else:
+            self.values = new_values
+            self.x_axis, self.y_axis = zip(*self.values)
+        
+        self.figure.clear()
+        self.initUI()
+        self.canvas.draw()
 
     def draw(self):
         layout = QVBoxLayout()

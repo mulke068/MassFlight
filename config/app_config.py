@@ -1,10 +1,7 @@
-# class AppConfig:
-    # Application configurations
+# Application configurations
 VERSION = "v0.7"
 APP_NAME = "MassFlight"
-
 ICON_FILE = "assets/favicon/icon.ico"
-
 
 # Window configurations
 WINDOW_WIDTH = 1000
@@ -20,14 +17,7 @@ BUTTON_PADDING_Y = 10
 GRAPH_DPI = 100
 GRAPH_FIGURE_SIZE = (6, 5)
 
-
-# 3D Visualization configurations
-# Control sensitivity
-# ZOOM_RESOLUTION = 0.5
-# ROTATION_SENSITIVITY = 0.5
-# PANNING_SENSITIVITY = 0.01
-# FOCAL_LENGTH = 60  # Field of view for 3D perspective
-
+# Theme configurations
 THEME = {
     'background': '#1a1a1a',
     'background_accent': "#242424",
@@ -40,6 +30,7 @@ THEME = {
     'text': '#ffffff',
     'text_secondary': '#666666',
 }
+
 # Default color palettes
 APPARENCE_MODE = "System"
 LIGHTMODE_BUTTON_COLOR = "#CECECE"

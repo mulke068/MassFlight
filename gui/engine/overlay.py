@@ -1,10 +1,9 @@
-
 from OpenGL import GL
 import logging
 
 from gui.engine import trajectory
 from gui.engine.trajectory import Trajectory
-from gui.engine.trajectory import SAMPLE_TRAJECTORY
+# from gui.engine.trajectory import SAMPLE_TRAJECTORY
 
 LOG = logging.getLogger(__name__)
 
@@ -22,6 +21,9 @@ class Overlay:
             self.pins.append((x,y,z))
         LOG.debug(f'Pin added at {x}, {y}, {z}', exc_info=1)
 
+    def get_pins(self, index):
+        return self.pins[index]
+
     def clear_pins(self):
         self.pins = []
         LOG.debug('Pins cleared', exc_info=1)
@@ -32,20 +34,24 @@ class Overlay:
 
     ###################### TRAJECTORY #############################
     def start_trajectory_animation(self):
-        if self.pins:
-            a = [(1,2,3)]
-            self.trajectory.add_point(a[0][0], a[0][1], a[0][2]) # Replace a with calculated points
-            self.trajectory.set_full_trajectory(self.trajectory.points.copy())
+        """Starts the trajectory animation."""
+        if self.trajectory.full_trajectory:
             self.trajectory.start_animation()
-        else:
-            self.trajectory.set_full_trajectory(SAMPLE_TRAJECTORY)
-            self.trajectory.start_animation()
+        # Fallback: If no trajectory but we have pins, maybe we should have calculated? 
+        # For now, just do nothing or use sample if explicitly requested, but better to rely on calculation.
+        elif not self.trajectory.full_trajectory:
+            LOG.warning("No trajectory data available to animate.")
         return True
     
+    def set_trajectory_data(self, points):
+        """Sets the trajectory data from a list of (x, y, z) points."""
+        self.trajectory.set_full_trajectory(points)
+        LOG.info(f"Trajectory data set with {len(points)} points")
     
+    ######################### DRAWING #####################
     def draw(self):
-        # GL.glEnable(GL.GL_BLEND)
-        # GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+        GL.glEnable(GL.GL_BLEND)
+        GL.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
         GL.glDisable(GL.GL_TEXTURE_2D)
         
         if self.pins:
@@ -80,5 +86,5 @@ class Overlay:
 
     def clear(self):
         self.pins = []
-        self.trajectories = []
+        self.trajectory.clear()
         LOG.debug('Overlay cleared', exc_info=1)

@@ -1,10 +1,8 @@
-
-# class RenderConfig:
-    
+# Sphere configurations
 SPHERE_RADIUS = 10
 SPHERE_RESULUTION = 100
     
-#Cam default position
+# Camera default position
 INITIAL_ZOOM = -20
 INITIAL_ROT_X = -100
 INITIAL_ROT_Y = 40
@@ -12,7 +10,6 @@ INITIAL_ROT_Y = 40
 INITIAL_TILT_X = 0
 INITIAL_TILT_Y = 0
 # INITIAL_TILT_Y = 0
-    
 DEFAULT_FOV = 45
 NEAR_CLIP = 0.1
 FAR_CLIP = 100.0
@@ -22,5 +19,6 @@ TILTING_SENSITIVITY = 0.05
 ZOOM_SENSITIVITY = 1.5
 MAX_ZOOM_IN = -(SPHERE_RADIUS + 0.5)
 
+# Window configurations
 MIN_WINDOW_WIDTH = 800
 MIN_WINDOW_HEIGHT = 600

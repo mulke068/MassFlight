@@ -43,7 +43,7 @@ Activate your isolated environment
 ```
 Install the required libraries
 ```
-pip install -r requirements.txt
+pip install -r requirements.txt || pip install PyQt6 PyOpenGL numpy pilkit matplotlib requests pytest
 ```
 Execute the Program
 ```

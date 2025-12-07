@@ -1,6 +1,4 @@
-#472-469
-
-from PyQt5.QtWidgets import QPushButton
+from PyQt6.QtWidgets import QPushButton
 import logging
 
 from config.app_config import THEME

@@ -1,18 +1,17 @@
-
 from OpenGL import GL
 from OpenGL.GLU import gluPerspective, gluUnProject
-from PyQt5.QtWidgets import QOpenGLWidget
-from PyQt5.QtCore import Qt, QTimer
-from OpenGL.GLU import *
-
+from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+from PyQt6.QtCore import Qt, QTimer
 
 from config.render_config import DEFAULT_FOV, FAR_CLIP, MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH, NEAR_CLIP, SPHERE_RADIUS
 from gui.engine.camera import Camera
 from gui.engine.overlay import Overlay
 from gui.engine.sphere import Sphere
 from gui.engine.texture_manager import TextureManager
-from gui.engine.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
-from gui.engine.trajectory import Trajectory, SAMPLE_TRAJECTORY
+from utils.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
+from utils.coordinates import ray_sphere_intersection, xyz_to_lonlat, lonlat_to_xyz
+from gui.engine.trajectory import Trajectory
+
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -21,8 +20,8 @@ class SphereWidget(QOpenGLWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
-        self.setFocusPolicy(Qt.StrongFocus)
-        
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
         self.camera = Camera()
         self.texture_manager = TextureManager()
         self.trajectory = Trajectory()
@@ -43,10 +42,29 @@ class SphereWidget(QOpenGLWidget):
         self.animation_timer = QTimer()
         self.animation_timer.timeout.connect(self._update_trajectory_animation)
 
+    def start_animation(self):
+        self.overlay.start_trajectory_animation()
+        self.animation_timer.start(16)
+
     def initializeGL(self):
         GL.glEnable(GL.GL_DEPTH_TEST)
         GL.glEnable(GL.GL_CULL_FACE)
         GL.glClearColor(0,0,0,1)
+
+        # Debug OpenGL Context
+        version = GL.glGetString(GL.GL_VERSION)
+        vendor = GL.glGetString(GL.GL_VENDOR)
+        renderer = GL.glGetString(GL.GL_RENDERER)
+
+        LOG.info(f"OpenGL Context: {version.decode('utf-8')}")
+        LOG.info(f"OpenGL Vendor: {vendor.decode('utf-8')}")
+        LOG.info(f"OpenGL Renderer: {renderer.decode('utf-8')}")
+
+        try:
+            profile_mask = GL.glGetIntegerv(GL.GL_CONTEXT_PROFILE_MASK)
+            LOG.info(f"Context Profile Mask: {profile_mask} (Compat=2, Core=1)")
+        except Exception as e:
+            LOG.info(f"Could not get profile mask (likely legacy context): {e}")
 
         self.texture_manager.set_textures('earth.jpg', 'stars.jpg')
         self.texture = self.texture_manager.load_texture()
@@ -59,6 +77,8 @@ class SphereWidget(QOpenGLWidget):
                 self.sphere.texture = int(self.texture)
             except Exception:
                 self.sphere.texture = self.texture
+        else:
+             LOG.warning("Failed to load sphere texture, using fallback color.")
 
         # create the sphere mesh/display list now that a GL context exists
         self.sphere._create_mesh()
@@ -69,6 +89,14 @@ class SphereWidget(QOpenGLWidget):
         return super().resizeGL(w, h)
 
     def paintGL(self):
+        # Reset pixel storage modes that might interfere with QPainter or internal blits
+        GL.glPixelStorei(GL.GL_PACK_ALIGNMENT, 4)
+        GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 4)
+
+        err = GL.glGetError()
+        if err != GL.GL_NO_ERROR:
+             LOG.error(f"OpenGL Error Pre-Paint: {err}")
+
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         
         self._draw_background()
@@ -88,6 +116,9 @@ class SphereWidget(QOpenGLWidget):
         GL.glRotatef(cam_paras['rotation_x'], 0,1,0)
 
         # Sphere.draw will bind the sphere texture (if set) and call the display list
+        GL.glEnable(GL.GL_TEXTURE_2D)
+        # Reset color to white for texturing
+        GL.glColor3f(1, 1, 1)
         self.sphere.draw()
 
         # ensure overlay renders after the sphere
@@ -95,12 +126,6 @@ class SphereWidget(QOpenGLWidget):
             self.overlay.draw()
         except Exception:
             pass
-
-        GL.glDisable(GL.GL_TEXTURE_2D)
-
-        self.overlay.draw()
-        
-        return super().paintGL()
 
     def _draw_background(self):
         """Draw background with stars texture"""
@@ -149,62 +174,20 @@ class SphereWidget(QOpenGLWidget):
         GL.glDisable(GL.GL_TEXTURE_2D)
         GL.glEnable(GL.GL_DEPTH_TEST)
 
-    # def _draw_pins(self):
-    #     """Draw pins"""
-    #     if not self.pin1 and not self.pin2:
-    #         return
-        
-    #     GL.glPointSize(10)
-    #     # draw pins in red; pins stored as (lon, lat) for sphere-relative placement
-    #     GL.glColor3f(1.0, 0.0, 0.0)
-    #     GL.glBegin(GL.GL_POINTS)
-    #     for pin in self.pin1 + self.pin2:
-    #         # support both legacy (x,y,z) and new (lon,lat) storage
-    #         if isinstance(pin, (tuple, list)) and len(pin) == 2:
-    #             lon, lat = pin
-    #             x, y, z = lonlat_to_xyz(lon, lat, SPHERE_RADIUS)
-    #         elif isinstance(pin, (tuple, list)) and len(pin) == 3:
-    #             x, y, z = pin
-    #         else:
-    #             continue
-
-    #         GL.glVertex3f(x, y, z)
-    #     GL.glEnd()
-    
-    # def _draw_trajectory(self):
-    #     """Draw trajectory"""
-    #     points = self.trajectory.get_points()
-    #     if not points:
-    #         return
-        
-    #     # draw trajectory in white
-    #     GL.glColor3f(1.0, 1.0, 1.0)
-    #     GL.glLineWidth(5)
-    #     GL.glBegin(GL.GL_LINE_STRIP)
-    #     for point in points:
-    #         GL.glVertex3f(point[0], point[1], point[2])
-    #     GL.glEnd()
-    
-    # def _update_animation(self):
-    #     """Update animation"""
-    #     if self.trajectory.update():
-    #         self.update()
-    #     else:
-    #         self.animation_timer.stop()
     
     # ----- input handlers (mouse + wheel) -----
     def mousePressEvent(self, event):
         # store start position and button
         self.setFocus()
         try:
-            self._last_mouse_pos = event.pos()
+            self._last_mouse_pos = event.position()
             self._mouse_button = event.button()
         except Exception:
             self._last_mouse_pos = None
             self._mouse_button = None
 
         if event.button() == Qt.MouseButton.RightButton:#& self.point2 == 0:
-            self._add_pin_at_cursor(event.x(), event.y())
+            self._add_pin_at_cursor(event.position().x(), event.position().y())
 
         return super().mousePressEvent(event)
 
@@ -216,14 +199,11 @@ class SphereWidget(QOpenGLWidget):
     def mouseMoveEvent(self, event):
         # do nothing if no last position recorded
         if self._last_mouse_pos is None:
-            self._last_mouse_pos = event.pos()
+            self._last_mouse_pos = event.position()
             return super().mouseMoveEvent(event)
 
-        dx = event.x() - self._last_mouse_pos.x()
-        dy = event.y() - self._last_mouse_pos.y()
-
-        # import local so we don't add a top-level dependency in other contexts
-        from PyQt5.QtCore import Qt
+        dx = event.position().x() - self._last_mouse_pos.x()
+        dy = event.position().y() - self._last_mouse_pos.y()
 
         if self._mouse_button == Qt.MouseButton.LeftButton:
             # rotate camera on left-drag
@@ -232,7 +212,7 @@ class SphereWidget(QOpenGLWidget):
             # tilt/pan on right-drag
             self.camera.tilt(dx, dy)
 
-        self._last_mouse_pos = event.pos()
+        self._last_mouse_pos = event.position()
         self.update()
         return super().mouseMoveEvent(event)
 
@@ -273,13 +253,96 @@ class SphereWidget(QOpenGLWidget):
                 self.animation_timer.start(16)  # ~60 FPS
                 LOG.info("Trajectory animation started ")
     
+
+
     def _update_trajectory_animation(self):
         """Update trajectory animation and redraw"""
-        if self.overlay.trajectory.update():
-            self.update()
-        else:
+        if not self.overlay.trajectory.update():
             self.animation_timer.stop()
             LOG.info("Trajectory animation complete")
+            return
+        
+        self.update()
+
+    def set_animation_speed(self, speed):
+        """Sets the number of steps processed per frame."""
+        self.overlay.trajectory.set_animation_speed(speed)
+        LOG.debug(f"Animation speed set to {speed}x")
+
+    # def fit_view_to_trajectory(self, points):
+    #     """Adjusts camera to fit all points in view with a true side profile."""
+    #     if not points:
+    #         return
+
+    #     # 1. Calculate Centroid (Midpoint)
+    #     sum_x = sum(p[0] for p in points)
+    #     sum_y = sum(p[1] for p in points)
+    #     sum_z = sum(p[2] for p in points)
+    #     count = len(points)
+        
+    #     center_x = sum_x / count
+    #     center_y = sum_y / count
+    #     center_z = sum_z / count
+        
+    #     # 2. Calculate Side Vector for Camera Position
+    #     # Start and End points
+    #     start = points[0]
+    #     end = points[-1]
+        
+    #     # Flight Vector (Start -> End)
+    #     fx = end[0] - start[0]
+    #     fy = end[1] - start[1]
+    #     fz = end[2] - start[2]
+        
+    #     # Up Vector (Normal at Midpoint)
+    #     # Just use the center vector itself (from origin to center)
+    #     ux, uy, uz = center_x, center_y, center_z
+        
+    #     # Cross Product: Side = Flight x Up
+    #     sx = fy * uz - fz * uy
+    #     sy = fz * ux - fx * uz
+    #     sz = fx * uy - fy * ux
+        
+    #     # Normalize Side Vector
+    #     import math
+    #     s_len = math.sqrt(sx*sx + sy*sy + sz*sz)
+    #     if s_len > 0:
+    #         sx /= s_len
+    #         sy /= s_len
+    #         sz /= s_len
+        
+    #     # Convert Side Vector to Lat/Lon for Camera Rotation
+    #     # We want the camera to look FROM this side vector TOWARDS the center.
+    #     # So we calculate the lat/lon of this vector.
+    #     from gui.engine.coordinates import xyz_to_lonlat
+    #     cam_lon, cam_lat = xyz_to_lonlat(sx, sy, sz)
+        
+    #     # Set Camera Rotation
+    #     # rotation_y (Pitch) = Latitude
+    #     # rotation_x (Yaw) = -Longitude - 90
+    #     self.camera.rotation_y = cam_lat
+    #     self.camera.rotation_x = -cam_lon - 90
+    #     self.camera.tilting_x = 0
+    #     self.camera.tilting_y = 0
+        
+    #     # 3. Calculate Zoom (Bounding Sphere Radius)
+    #     max_dist = 0
+    #     for p in points:
+    #         dist = math.sqrt((p[0]-center_x)**2 + (p[1]-center_y)**2 + (p[2]-center_z)**2)
+    #         if dist > max_dist:
+    #             max_dist = dist
+        
+    #     fov_rad = math.radians(DEFAULT_FOV)
+    #     required_dist = max_dist / math.tan(fov_rad / 2)
+    #     required_dist *= 2.0 # Generous padding
+        
+    #     # Clamp zoom
+    #     if required_dist < 15: required_dist = 15
+    #     if required_dist > 150: required_dist = 150
+        
+    #     self.camera.zoom_distance = -required_dist
+        
+    #     self.update()
 
     
     def _get_ray_from_cursor(self, x, y):
@@ -349,23 +412,9 @@ class SphereWidget(QOpenGLWidget):
             if intersection:
                 self.overlay.add_pin(*intersection)
                 lon, lat = xyz_to_lonlat(*intersection)
-                LOG.info(f"Pin at Lat,Lon: {lat},{lon}")
+                LOG.debug(f"Pin at Lat,Lon: {lat},{lon}")
                 self.update()
 
-            # if intersection:
-            #     lon, lat = xyz_to_lonlat(*intersection)
-            #     if not self.pin1:
-            #         self.pin1.append((lon, lat))
-            #         LOG.info(f"1st Pin at Lat,Lon: {lat},{lon}")
-            #         self.update()
-            #     elif not self.pin2:
-            #         is_close = abs(self.pin1[0][0] - lon) < threshold and abs(self.pin1[0][1] - lat) < threshold
-            #         if not is_close:
-            #             self.pin2.append((lon, lat))
-            #             LOG.info(f"2nd Pin at Lat, Lon: {lat},{lon}")
-            #             self.update()
-            #         else:
-            #             LOG.info("Rejected: Pin2 is too close to Pin1.")
         except Exception as e:
             LOG.error(f"Error adding pin: {e}")
         finally:

@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QFont
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QFont
 from gui.window import MainWindow
 import logging
 import sys
@@ -16,4 +16,4 @@ if __name__ == "__main__":
     win = MainWindow()
     win.show()
 
-    sys.exit(app.exec_()) 
+    sys.exit(app.exec()) 
